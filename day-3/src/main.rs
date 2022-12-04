@@ -4,6 +4,7 @@ use std::hash::Hash;
 fn main() -> anyhow::Result<()> {
     let filename = "./day-3/input.txt";
     let content = read_file(filename)?;
+    part1(&content);
     part2(&content);
     Ok(())
 }
@@ -14,10 +15,11 @@ fn part1(content: &str) {
 
     for line in lines {
         let (s1, s2) = compartments(line);
-        let dups: String = find_duplicates(s1, s2).iter().collect();
-        let priority = priority(dups.chars().next().unwrap());
+        let m1: HashSet<_> = s1.chars().collect();
+        let m2: HashSet<_> = s2.chars().collect();
+        let dups: String = m1.intersection(&m2).copied().collect();
+        let priority = dups.chars().next().map(|c| priority(c)).unwrap_or(0);
         sum += priority;
-        println!("{} {} {} {}", s1, s2, dups, priority);
     }
 
     println!("{}", sum);
@@ -38,19 +40,11 @@ fn part2(content: &str) {
             .collect::<HashSet<_>>()
             .intersection(&m3)
             .collect();
-        let c = dups.chars().next().unwrap();
-        println!("{} {} {} {}", chunk[0], chunk[1], chunk[2], c);
-        let priority = priority(c);
+        let priority = dups.chars().next().map(|c| priority(c)).unwrap_or(0);
         sum += priority;
     }
 
     println!("{}", sum);
-}
-
-fn find_duplicates(s1: &str, s2: &str) -> HashSet<char> {
-    let m1: HashSet<_> = s1.chars().collect();
-    let m2: HashSet<_> = s2.chars().collect();
-    m1.intersection(&m2).copied().collect()
 }
 
 fn priority(c: char) -> usize {
@@ -61,7 +55,7 @@ fn priority(c: char) -> usize {
     }
 }
 
-fn compartments<'a>(s: &'a str) -> (&'a str, &'a str) {
+fn compartments(s: &str) -> (&str, &str) {
     let l = s.len();
     (&s[0..(l / 2)], &s[(l / 2)..])
 }
