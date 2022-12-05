@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{digit1, line_ending, satisfy, space0, space1},
     multi::separated_list1,
-    sequence::{delimited, tuple},
+    sequence::delimited,
     IResult,
 };
 
@@ -81,21 +81,13 @@ struct Move {
 }
 
 fn move_command(input: &str) -> IResult<&str, Move> {
-    use nom::character::complete::char as char_parser;
     use nom::character::complete::u32 as u32_parser;
-    let (input, (_, _, quantity, _, _, _, from, _, _, _, to)) = tuple((
-        tag("move"),
-        char_parser(' '),
-        u32_parser,
-        char_parser(' '),
-        tag("from"),
-        char_parser(' '),
-        u32_parser,
-        char_parser(' '),
-        tag("to"),
-        char_parser(' '),
-        u32_parser,
-    ))(input)?;
+    let (input, _move) = tag("move ")(input)?;
+    let (input, quantity) = u32_parser(input)?;
+    let (input, _from) = tag(" from ")(input)?;
+    let (input, from) = u32_parser(input)?;
+    let (input, _to) = tag(" to ")(input)?;
+    let (input, to) = u32_parser(input)?;
     let result = Move { quantity, from, to };
     Ok((input, result))
 }
@@ -107,14 +99,13 @@ struct Document {
 }
 
 fn document(input: &str) -> IResult<&str, Document> {
-    let (input, (lines, _, _, _, _, moves)) = tuple((
-        crate_item_lines,
-        line_ending,
-        tuple((space0, separated_list1(space1, digit1), space0)),
-        line_ending,
-        line_ending,
-        separated_list1(line_ending, move_command),
-    ))(input)?;
+    let (input, lines) = crate_item_lines(input)?;
+    let (input, _) = line_ending(input)?;
+    let (input, _columns) = delimited(space0, separated_list1(space1, digit1), space0)(input)?;
+    let (input, _) = line_ending(input)?;
+    let (input, _) = line_ending(input)?;
+    let (input, moves) = separated_list1(line_ending, move_command)(input)?;
+
     Ok((
         input,
         Document {
@@ -179,8 +170,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_crate_item_line() {
-        let input = "    [D]    
+    fn test_part1() {
+        let input = test_input();
+        let result = part1(input).unwrap();
+        let expected = "CMZ".to_owned();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_part2() {
+        let input = test_input();
+        let result = part2(input).unwrap();
+        let expected = "MCD".to_owned();
+        assert_eq!(result, expected);
+    }
+
+    fn test_input() -> &'static str {
+        "    [D]    
 [N] [C]    
 [Z] [M] [P]
  1   2   3 
@@ -188,9 +194,6 @@ mod tests {
 move 1 from 2 to 1
 move 3 from 1 to 3
 move 2 from 2 to 1
-move 1 from 1 to 2";
-        let result = part1(input).unwrap();
-        let expected = "CMZ".to_owned();
-        assert_eq!(result, expected);
+move 1 from 1 to 2"
     }
 }
