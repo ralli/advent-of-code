@@ -1,6 +1,4 @@
-use std::iter::Map;
 use std::ops::RangeInclusive;
-use std::str::{Lines, Split};
 
 use anyhow::Context;
 
@@ -50,7 +48,7 @@ fn is_contained_in(a: &RangeInclusive<i32>, b: &RangeInclusive<i32>) -> bool {
     a.start() <= b.start() && a.end() >= b.end()
 }
 
-fn range_lists<'a>(content: &str) -> anyhow::Result<Vec<Vec<RangeInclusive<i32>>>> {
+fn range_lists(content: &str) -> anyhow::Result<Vec<Vec<RangeInclusive<i32>>>> {
     content
         .lines()
         .enumerate()
@@ -58,7 +56,7 @@ fn range_lists<'a>(content: &str) -> anyhow::Result<Vec<Vec<RangeInclusive<i32>>
         .collect()
 }
 
-fn ranges_from_line<'a>(line: &str) -> Result<Vec<RangeInclusive<i32>>, anyhow::Error> {
+fn ranges_from_line(line: &str) -> Result<Vec<RangeInclusive<i32>>, anyhow::Error> {
     let range_parts = line.split(',');
     let ranges = range_parts.map(|range_part| {
         let mut num_parts = range_part.split('-');
@@ -74,7 +72,7 @@ fn ranges_from_line<'a>(line: &str) -> Result<Vec<RangeInclusive<i32>>, anyhow::
             .trim()
             .parse::<i32>()
             .context("end")?;
-        Ok((start..=end))
+        Ok(start..=end)
     });
     ranges.collect()
 }

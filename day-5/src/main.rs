@@ -125,7 +125,7 @@ fn document(input: &str) -> IResult<&str, Document> {
 }
 
 fn build_stacks(lines: &[Vec<char>]) -> Vec<Vec<char>> {
-    let lines: Vec<Vec<char>> = lines.to_vec().into_iter().rev().collect();
+    let lines: Vec<Vec<char>> = lines.iter().cloned().rev().collect();
 
     if lines.is_empty() {
         return Vec::new();

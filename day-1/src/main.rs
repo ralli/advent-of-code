@@ -8,7 +8,7 @@ fn main() -> anyhow::Result<()> {
     let mut sums = Vec::new();
     for line in lines {
         let line = line?;
-        if line.trim().len() > 0 {
+        if !line.is_empty() {
             let value = line.parse::<i32>()?;
             current_sum += value;
         } else {

@@ -1,5 +1,4 @@
 use std::collections::hash_set::HashSet;
-use std::hash::Hash;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-3/input.txt";
@@ -18,7 +17,7 @@ fn part1(content: &str) {
         let m1: HashSet<_> = s1.chars().collect();
         let m2: HashSet<_> = s2.chars().collect();
         let dups: String = m1.intersection(&m2).copied().collect();
-        let priority = dups.chars().next().map(|c| priority(c)).unwrap_or(0);
+        let priority = dups.chars().next().map(priority).unwrap_or(0);
         sum += priority;
     }
 
@@ -40,7 +39,7 @@ fn part2(content: &str) {
             .collect::<HashSet<_>>()
             .intersection(&m3)
             .collect();
-        let priority = dups.chars().next().map(|c| priority(c)).unwrap_or(0);
+        let priority = dups.chars().next().map(priority).unwrap_or(0);
         sum += priority;
     }
 
