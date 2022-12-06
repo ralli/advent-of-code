@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 fn main() -> anyhow::Result<()> {
     let content = read_file("./day-6/input.txt")?;
 
@@ -27,14 +29,13 @@ fn part2(input: &str) -> Option<usize> {
 }
 
 fn is_all_distinct(input: &[char]) -> bool {
-    let size = input.len();
+    let mut m = HashSet::with_capacity(1024);
 
-    for i in 0..size {
-        for j in (i + 1)..size {
-            if input[i] == input[j] {
-                return false;
-            }
+    for c in input.iter() {
+        if m.contains(c) {
+            return false;
         }
+        m.insert(*c);
     }
 
     true
