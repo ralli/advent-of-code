@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 fn main() -> anyhow::Result<()> {
     let content = read_file("./day-6/input.txt")?;
