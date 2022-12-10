@@ -10,6 +10,9 @@ fn main() -> anyhow::Result<()> {
 
     println!("{}", result);
 
+    let result = part2(&input);
+    println!("{}", result);
+
     Ok(())
 }
 
@@ -22,6 +25,33 @@ fn part1(input: &str) -> i32 {
         .into_iter()
         .map(|c| c * hist[(c - 1) as usize].0)
         .sum()
+}
+
+fn part2(input: &str) -> String {
+    let (_, instructions) = instructions(input).unwrap();
+    let hist = execution_history(&instructions);
+    let mut display = Vec::new();
+
+    let mut cycle = 0;
+    for _ in 0..6 {
+        let mut row = Vec::new();
+        for c in 0..40 {
+            let x = hist[cycle].0;
+            cycle += 1;
+            row.push(if (x - 1) <= c && (x + 1) >= c {
+                '#'
+            } else {
+                '.'
+            })
+        }
+        display.push(row);
+    }
+
+    let lines: Vec<String> = display
+        .into_iter()
+        .map(|v| v.into_iter().collect::<String>())
+        .collect();
+    lines.join("\n")
 }
 
 fn execution_history(instructions: &[Instruction]) -> Vec<(i32, i32)> {
