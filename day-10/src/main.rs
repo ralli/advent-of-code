@@ -21,10 +21,7 @@ fn part1(input: &str) -> i32 {
     let hist = execution_history(&instructions);
     let cycles: [i32; 6] = [20, 60, 100, 140, 180, 220];
 
-    cycles
-        .into_iter()
-        .map(|c| c * hist[(c - 1) as usize].0)
-        .sum()
+    cycles.into_iter().map(|c| c * hist[(c - 1) as usize]).sum()
 }
 
 fn part2(input: &str) -> String {
@@ -36,7 +33,7 @@ fn part2(input: &str) -> String {
     for _ in 0..6 {
         let mut row = Vec::new();
         for c in 0..40 {
-            let x = hist[cycle].0;
+            let x = hist[cycle];
             cycle += 1;
             row.push(if (x - 1) <= c && (x + 1) >= c {
                 '#'
@@ -54,19 +51,19 @@ fn part2(input: &str) -> String {
     lines.join("\n")
 }
 
-fn execution_history(instructions: &[Instruction]) -> Vec<(i32, i32)> {
+fn execution_history(instructions: &[Instruction]) -> Vec<i32> {
     let mut result = Vec::new();
     let mut x = 1;
 
     for instruction in instructions.iter() {
         match instruction {
             Instruction::ADDX(n) => {
-                result.push((x, x));
-                result.push((x, x + n));
+                result.push(x);
+                result.push(x);
                 x += n;
             }
             Instruction::NOOP => {
-                result.push((x, x));
+                result.push(x);
             }
         }
     }
