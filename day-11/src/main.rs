@@ -50,18 +50,25 @@ fn part1(input: &str) -> usize {
     inspections[0] * inspections[1]
 }
 
-fn part2(input: &str) -> i32 {
+fn part2(input: &str) -> usize {
     let (_, mut monkeys) = monkeys(input).unwrap();
     let mut inspections = vec![0; monkeys.len()];
     let num_rounds = 10_000;
     let num_monkeys = monkeys.len();
+
+    //
+    // by trial and error: if n % 3 = and n % 5 = 0 then n % (3*5) % 5 = 0 and n % (5*3) = 0
+    // works for (n % (3*5)) * x and (n % (3+5)) + x since x has to be divisable by 3 and 5.
+    // may be that this works with something like  ggt(3, 5) but have not tried, yet.
+    // Found something that explains it: https://www.lernhelfer.de/schuelerlexikon/mathematik/artikel/zahlenkongruenzen#
+    let divisor: i64 = monkeys.iter().map(|m| m.test_operand).product();
 
     for _ in 0..num_rounds {
         for monkey_no in 0..num_monkeys {
             while !monkeys[monkey_no].items.is_empty() {
                 inspections[monkey_no] += 1;
                 let old_value = monkeys[monkey_no].items.pop_front().unwrap();
-                let new_value = monkeys[monkey_no].operation.value(old_value);
+                let new_value = monkeys[monkey_no].operation.value(old_value) % divisor;
                 let test_value = monkeys[monkey_no].test_operand;
                 let next_monkey = if new_value % test_value == 0 {
                     monkeys[monkey_no].if_true
@@ -76,9 +83,7 @@ fn part2(input: &str) -> i32 {
 
     inspections.sort_by(|a, b| b.cmp(a));
 
-    let a = inspections[0] as i32;
-    let b = inspections[1] as i32;
-    a * b
+    inspections[0] * inspections[1]
 }
 
 fn read_file(filename: &str) -> anyhow::Result<String> {
@@ -88,9 +93,9 @@ fn read_file(filename: &str) -> anyhow::Result<String> {
 
 #[derive(Debug)]
 struct Monkey {
-    items: VecDeque<i32>,
+    items: VecDeque<i64>,
     operation: Operation,
-    test_operand: i32,
+    test_operand: i64,
     if_true: usize,
     if_false: usize,
 }
@@ -104,11 +109,11 @@ enum Op {
 #[derive(Debug)]
 enum Operand {
     Old,
-    Constant(i32),
+    Constant(i64),
 }
 
 impl Operand {
-    fn value(&self, old: i32) -> i32 {
+    fn value(&self, old: i64) -> i64 {
         match self {
             Operand::Old => old,
             Operand::Constant(n) => *n,
@@ -124,7 +129,7 @@ struct Operation {
 }
 
 impl Operation {
-    fn value(&self, old: i32) -> i32 {
+    fn value(&self, old: i64) -> i64 {
         let left_value = self.left.value(old);
         let right_value = self.right.value(old);
         match self.op {
@@ -168,11 +173,11 @@ fn monkey_name(input: &str) -> IResult<&str, u32> {
     delimited(tag("Monkey "), u32_parser, tag(":"))(input)
 }
 
-fn items(input: &str) -> IResult<&str, Vec<i32>> {
-    use nom::character::complete::i32 as i32_parser;
+fn items(input: &str) -> IResult<&str, Vec<i64>> {
+    use nom::character::complete::i64 as i64_parser;
     preceded(
         delimited(space1, tag("Starting items:"), space1),
-        separated_list1(tuple((tag(","), space1)), i32_parser),
+        separated_list1(tuple((tag(","), space1)), i64_parser),
     )(input)
 }
 
@@ -199,16 +204,16 @@ fn op(input: &str) -> IResult<&str, Op> {
 
 fn operand(input: &str) -> IResult<&str, Operand> {
     let old = map(tag("old"), |_: &str| Operand::Old);
-    let constant = map(nom::character::complete::i32, |n| Operand::Constant(n));
+    let constant = map(nom::character::complete::i64, |n| Operand::Constant(n));
     delimited(space0, alt((old, constant)), space0)(input)
 }
 
-fn test_operand(input: &str) -> IResult<&str, i32> {
-    use nom::character::complete::i32 as i32_parser;
+fn test_operand(input: &str) -> IResult<&str, i64> {
+    use nom::character::complete::i64 as i64_parser;
 
     preceded(
         delimited(space1, tag("Test: divisible by"), space1),
-        i32_parser,
+        i64_parser,
     )(input)
 }
 
@@ -277,8 +282,8 @@ Monkey 3:
 
     #[test]
     fn part2_works() {
-        // let result = part2(INPUT);
-        // let expected = 2713310158i32i32;
-        // assert_eq!(result, expected);
+        let result = part2(INPUT);
+        let expected = 2713310158usize as usize;
+        assert_eq!(result, expected);
     }
 }
