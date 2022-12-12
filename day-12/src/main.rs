@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use nom::character::complete::{alpha1, line_ending};
 use nom::combinator::map;
 use nom::multi::separated_list1;
 use nom::IResult;
-use std::collections::{HashSet, VecDeque};
+use petgraph::algo::dijkstra;
+use petgraph::graph::{DiGraph, NodeIndex};
 
 type Grid = Vec<Vec<char>>;
 
@@ -18,67 +21,69 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn create_graph(grid: &Grid) -> DiGraph<usize, (), usize> {
+    let height = grid.len();
+    let width = grid[0].len();
+    let mut edges = Vec::new();
+
+    for r in 0..height {
+        for c in 0..width {
+            let moves = possible_moves(grid, (r, c));
+            let from = to_index(r, c, width);
+            for m in moves {
+                let to = to_index(m.0, m.1, width);
+                edges.push((from, to));
+            }
+        }
+    }
+
+    DiGraph::from_edges(&edges)
+}
+
 fn part1(input: &str) -> Option<usize> {
     let (_, grid) = grid(input).unwrap();
+    let g = create_graph(&grid);
     let start = find_value(&grid, 'S')?;
-    find_distance(&grid, start)
+    let end = find_value(&grid, 'E')?;
+    let node_map: HashMap<NodeIndex<usize>, usize> =
+        dijkstra(&g, start.into(), Some(end.into()), |_| 1);
+    let start_idx = NodeIndex::from(end);
+
+    node_map.get(&start_idx).copied()
 }
 
 fn part2(input: &str) -> Option<usize> {
     let (_, grid) = grid(input).unwrap();
-    let mut results = Vec::new();
-    let height = grid.len();
     let width = grid[0].len();
+    let mut g = create_graph(&grid);
+    let end = find_value(&grid, 'E')?;
 
-    for r in 0..height {
-        for c in 0..width {
+    g.reverse();
+    let node_map: HashMap<NodeIndex<usize>, usize> = dijkstra(&g, end.into(), None, |_| 1);
+
+    node_map
+        .iter()
+        .filter_map(|(k, v)| {
+            let idx = k.index();
+            let r = idx / width;
+            let c = idx % width;
             if grid[r][c] == 'a' || grid[r][c] == 'S' {
-                results.push(find_distance(&grid, (r, c)));
+                Some(*v)
+            } else {
+                None
             }
-        }
-    }
-
-    results.iter().flatten().min().copied()
+        })
+        .min()
 }
 
-fn find_distance(grid: &Grid, start: (usize, usize)) -> Option<usize> {
-    let mut q = VecDeque::new();
-    let mut visited = HashSet::new();
-
-    visited.insert(start);
-    let initial_moves = possible_moves(grid, 1, start);
-    for m in initial_moves {
-        if !visited.contains(&(m.0, m.1)) {
-            q.push_back(m);
-            visited.insert((m.0, m.1));
-        }
-    }
-
-    while !q.is_empty() {
-        let (row, col, distance) = q.pop_front().unwrap();
-        if grid[row][col] == 'E' {
-            return Some(distance);
-        }
-        let moves = possible_moves(&grid, distance + 1, (row, col));
-        for m in moves.into_iter() {
-            if !visited.contains(&(m.0, m.1)) {
-                q.push_back(m);
-                visited.insert((m.0, m.1));
-            }
-        }
-    }
-
-    None
-}
-
-fn find_value(grid: &Grid, value: char) -> Option<(usize, usize)> {
+fn find_value(grid: &Grid, value: char) -> Option<usize> {
     let height = grid.len();
     let width = grid[0].len();
 
     for r in 0..height {
         for c in 0..width {
             if grid[r][c] == value {
-                return Some((r, c));
+                return Some(to_index(r, c, width));
             }
         }
     }
@@ -86,30 +91,26 @@ fn find_value(grid: &Grid, value: char) -> Option<(usize, usize)> {
     None
 }
 
-fn possible_moves(
-    grid: &Grid,
-    distance: usize,
-    from: (usize, usize),
-) -> Vec<(usize, usize, usize)> {
+fn possible_moves(grid: &Grid, from: (usize, usize)) -> Vec<(usize, usize)> {
     let height = grid.len();
     let width = grid[0].len();
-    let mut edges: Vec<(usize, usize, usize)> = Vec::new();
+    let mut edges: Vec<(usize, usize)> = Vec::new();
     let (r, c) = from;
 
     if r > 0 && is_valid(grid[r][c], grid[r - 1][c]) {
-        edges.push((r - 1, c, distance));
+        edges.push((r - 1, c));
     }
 
     if r + 1 < height && is_valid(grid[r][c], grid[r + 1][c]) {
-        edges.push((r + 1, c, distance))
+        edges.push((r + 1, c))
     }
 
     if c > 0 && is_valid(grid[r][c], grid[r][c - 1]) {
-        edges.push((r, c - 1, distance))
+        edges.push((r, c - 1))
     }
 
     if c + 1 < width && is_valid(grid[r][c], grid[r][c + 1]) {
-        edges.push((r, c + 1, distance))
+        edges.push((r, c + 1))
     }
 
     edges
@@ -127,6 +128,10 @@ fn to_code(c: char) -> i32 {
         'E' => 'z' as i32,
         _ => c as i32,
     }
+}
+
+fn to_index(row: usize, col: usize, width: usize) -> usize {
+    row * width + col
 }
 
 fn grid(input: &str) -> IResult<&str, Grid> {
