@@ -57,12 +57,12 @@ fn execution_history(instructions: &[Instruction]) -> Vec<i32> {
 
     for instruction in instructions.iter() {
         match instruction {
-            Instruction::ADDX(n) => {
+            Instruction::AddX(n) => {
                 result.push(x);
                 result.push(x);
                 x += n;
             }
-            Instruction::NOOP => {
+            Instruction::NoOp => {
                 result.push(x);
             }
         }
@@ -72,8 +72,8 @@ fn execution_history(instructions: &[Instruction]) -> Vec<i32> {
 
 #[derive(Debug, Clone, Copy)]
 enum Instruction {
-    ADDX(i32),
-    NOOP,
+    AddX(i32),
+    NoOp,
 }
 
 fn instructions(input: &str) -> IResult<&str, Vec<Instruction>> {
@@ -86,7 +86,7 @@ fn instruction(input: &str) -> IResult<&str, Instruction> {
 
 fn noop(input: &str) -> IResult<&str, Instruction> {
     let (input, _) = tag("noop")(input)?;
-    Ok((input, Instruction::NOOP))
+    Ok((input, Instruction::NoOp))
 }
 
 fn addx(input: &str) -> IResult<&str, Instruction> {
@@ -94,7 +94,7 @@ fn addx(input: &str) -> IResult<&str, Instruction> {
     let (input, _) = space1(input)?;
     let (input, n) = nom::character::complete::i32(input)?;
 
-    Ok((input, Instruction::ADDX(n)))
+    Ok((input, Instruction::AddX(n)))
 }
 
 fn read_file(filename: &str) -> anyhow::Result<String> {

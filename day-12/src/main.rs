@@ -77,12 +77,11 @@ fn part2(input: &str) -> Option<usize> {
 }
 
 fn find_value(grid: &Grid, value: char) -> Option<usize> {
-    let height = grid.len();
     let width = grid[0].len();
 
-    for r in 0..height {
-        for c in 0..width {
-            if grid[r][c] == value {
+    for (r, row) in grid.iter().enumerate() {
+        for (c, &v) in row.iter().enumerate() {
+            if v == value {
                 return Some(to_index(r, c, width));
             }
         }

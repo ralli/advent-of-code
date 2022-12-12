@@ -204,7 +204,7 @@ fn op(input: &str) -> IResult<&str, Op> {
 
 fn operand(input: &str) -> IResult<&str, Operand> {
     let old = map(tag("old"), |_: &str| Operand::Old);
-    let constant = map(nom::character::complete::i64, |n| Operand::Constant(n));
+    let constant = map(nom::character::complete::i64, Operand::Constant);
     delimited(space0, alt((old, constant)), space0)(input)
 }
 
