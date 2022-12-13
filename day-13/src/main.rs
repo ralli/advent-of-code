@@ -63,15 +63,8 @@ fn part2(input: &str) -> usize {
     //     println!("{}", p);
     // }
 
-    let first_idx = 1 + packets
-        .iter()
-        .position(|x| x.cmp(&first) == Ordering::Equal)
-        .unwrap();
-
-    let second_idx = 1 + packets
-        .iter()
-        .position(|x| x.cmp(&second) == Ordering::Equal)
-        .unwrap();
+    let first_idx = 1 + packets.iter().position(|x| x == &first).unwrap();
+    let second_idx = 1 + packets.iter().position(|x| x == &second).unwrap();
 
     first_idx * second_idx
 }
