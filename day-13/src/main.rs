@@ -141,7 +141,7 @@ impl fmt::Display for Item {
         match self {
             Item::Constant(n) => write!(f, "{}", n),
             Item::List(lst) => {
-                write!(f, "{}", '[')?;
+                write!(f, "[")?;
                 for (i, v) in lst.iter().enumerate() {
                     if i > 0 {
                         write!(f, ",")?;
@@ -153,6 +153,7 @@ impl fmt::Display for Item {
         }
     }
 }
+
 fn sequence_pairs(input: &str) -> IResult<&str, Vec<(Item, Item)>> {
     separated_list1(many1(line_ending), sequence_pair)(input)
 }
