@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::ops::{Range, RangeInclusive};
 
 use nom::bytes::complete::tag;
 use nom::character::complete::{line_ending, space0};
@@ -21,7 +20,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part1(input: &str, ypos: i32) -> usize {
-    let (input, entries) = lines(input).unwrap();
+    let (_, entries) = lines(input).unwrap();
     let beacons: HashSet<_> = entries
         .iter()
         .map(|e| e.beacon_pos)
@@ -39,7 +38,7 @@ fn part1(input: &str, ypos: i32) -> usize {
             );
             (e.sensor_pos.0, e.sensor_pos.1, d)
         })
-        .filter(|(x, y, d)| y + d >= ypos && y - d <= ypos)
+        .filter(|(_x, y, d)| y + d >= ypos && y - d <= ypos)
         .collect();
     let mut marked = HashSet::new();
 
@@ -135,7 +134,7 @@ fn merge_intervals(a: &[(i32, i32)]) -> Vec<(i32, i32)> {
         let top = s.last_mut().unwrap();
         if top.1 < ai.0 {
             s.push(*ai);
-        } else if top.1 <= ai.1 {
+        } else if top.1 < ai.1 {
             *top = (top.0, ai.1)
         }
     }
