@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
@@ -21,70 +21,56 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(input: &str) -> i32 {
     let (_, nodes) = nodes(input).unwrap();
-    let mut solver = Solver::new();
-    solver.find_solution(&nodes)
-}
+    let mut q = VecDeque::new();
+    let total_time = 30;
+    let mut max_flow = 0;
+    let weights: HashMap<&str, i32> = nodes.iter().map(|(s, f, _)| (*s, *f)).collect();
+    let adj: HashMap<&str, &Vec<&str>> = nodes.iter().map(|(s, _, n)| (*s, n)).collect();
+    let mut best: HashMap<&str, i32> = HashMap::new();
 
-struct Solver<'a> {
-    cache: HashMap<(&'a str, Vec<&'a str>, i32), i32>,
-}
+    let start = "AA";
+    q.push_back((start, 0, total_time, vec![]));
+    // q.push_back((start, *f, total_time - 1, vec![start]));
 
-impl<'a> Solver<'a> {
-    fn new() -> Self {
-        Solver {
-            cache: HashMap::new(),
+    while !q.is_empty() {
+        let (current, current_flow, time_left, opened) = q.pop_front().unwrap();
+
+        // println!("{} {} {} {:?}", current, current_flow, time_left, opened);
+
+        if current_flow > max_flow {
+            max_flow = current_flow;
+        }
+
+        if time_left > 0 && !opened.iter().any(|s| s == &current) {
+            let w = *weights.get(current).unwrap();
+            if w > 0 {
+                let mut next_opened = opened.clone();
+                next_opened.push(current);
+                let next_flow = (time_left - 1) * w + current_flow;
+                q.push_back((current, next_flow, time_left - 1, next_opened));
+            }
+        }
+
+        if time_left > 0 {
+            let next = *adj.get(current).unwrap();
+            for s in next.iter() {
+                let best_flow = best.entry(*s).or_insert(-1);
+                if current_flow > *best_flow {
+                    *best_flow = current_flow;
+                    q.push_back((s, current_flow, time_left - 1, opened.clone()));
+                }
+            }
         }
     }
 
-    fn find_solution(&mut self, nodes: &'a [Node]) -> i32 {
-        let node_map: HashMap<&str, &Node> = nodes.iter().map(|n| (n.from, n)).collect();
-        let open = Vec::new();
-        self.find("AA", &node_map, &open, 30)
-    }
-
-    fn find(
-        &mut self,
-        id: &'a str,
-        node_map: &std::collections::HashMap<&str, &Node<'a>>,
-        open: &[&'a str],
-        time: i32,
-    ) -> i32 {
-        if time == 0 {
-            return 0;
-        }
-
-        let key = (id, open.to_vec(), time);
-        if let Some(r) = self.cache.get(&key) {
-            return *r;
-        }
-        let mut result = 0;
-        let node = node_map.get(id).unwrap();
-        if node.flow > 0 && !open.contains(&node.from) {
-            let mut next_open: Vec<&'a str> = open.to_owned();
-            next_open.push(node.from);
-            result =
-                result.max((time - 1) * node.flow + self.find(id, node_map, &next_open, time - 1));
-        }
-
-        for s in node.next_nodes.iter() {
-            result = result.max(self.find(s, node_map, open, time - 1));
-        }
-
-        self.cache.insert((id, open.to_vec(), time), result);
-        result
-    }
+    max_flow
 }
 
-fn part2(_input: &str) -> i32 {
-    todo!()
+fn part2(_input: &str) -> usize {
+    0
 }
 
-#[derive(Debug)]
-struct Node<'a> {
-    from: &'a str,
-    flow: i32,
-    next_nodes: Vec<&'a str>,
-}
+type Node<'a> = (&'a str, i32, Vec<&'a str>);
 
 fn nodes(input: &str) -> IResult<&str, Vec<Node>> {
     separated_list1(line_ending, node)(input)
@@ -101,14 +87,7 @@ fn node(input: &str) -> IResult<&str, Node> {
     ))(input)?;
     let (input, next_nodes) = separated_list1(tag(", "), alpha1)(input)?;
 
-    Ok((
-        input,
-        Node {
-            from: node,
-            flow: flow_rate,
-            next_nodes: next_nodes,
-        },
-    ))
+    Ok((input, (node, flow_rate, next_nodes)))
 }
 
 fn read_file(filename: &str) -> anyhow::Result<String> {
@@ -141,7 +120,7 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
     #[test]
     fn part2_works() {
         let result = part2(INPUT);
-        let expected = 1707;
+        let expected = 56000011;
         assert_eq!(result, expected);
     }
 }
