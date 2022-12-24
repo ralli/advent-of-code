@@ -16,24 +16,30 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part1(input: &str) -> i64 {
-    let (_, arr) = numbers(input).unwrap();
-    let size = arr.len();
-    let mut numbers: Vec<_> = arr.iter().copied().enumerate().collect();
-    for (original_index, value) in arr.into_iter().enumerate() {
-        let index = numbers
-            .iter()
-            .position(|(idx, _)| *idx == original_index)
-            .unwrap();
-        let new_index = index as i64 + value as i64;
-        let new_index = new_index.rem_euclid(size as i64 - 1);
-        let tmp = numbers.remove(index);
-        numbers.insert(new_index as usize, tmp);
-    }
-    let zero_idx = numbers.iter().position(|(_, x)| *x == 0).unwrap();
-    let (_, x1) = numbers[(zero_idx + 1_000) % size];
-    let (_, x2) = numbers[(zero_idx + 2_000) % size];
-    let (_, x3) = numbers[(zero_idx + 3_000) % size];
+    let (_, numbers) = numbers(input).unwrap();
+    let mut pairs: Vec<_> = numbers.iter().copied().enumerate().collect();
+    let size = numbers.len();
+
+    mix(&numbers, &mut pairs);
+
+    let zero_idx = pairs.iter().position(|(_, x)| *x == 0).unwrap();
+    let (_, x1) = pairs[(zero_idx + 1_000) % size];
+    let (_, x2) = pairs[(zero_idx + 2_000) % size];
+    let (_, x3) = pairs[(zero_idx + 3_000) % size];
+
     x1 + x2 + x3
+}
+
+fn mix(numbers: &[i64], pairs: &mut Vec<(usize, i64)>) {
+    for (idx, &value) in numbers.into_iter().enumerate() {
+        if value == 0 {
+            continue;
+        }
+        let current_idx = pairs.iter().position(|(i, _)| *i == idx).unwrap();
+        let tmp = pairs.remove(current_idx);
+        let new_idx = (current_idx as i64 + value).rem_euclid(pairs.len() as i64);
+        pairs.insert(new_idx as usize, tmp);
+    }
 }
 
 fn part2(input: &str) -> i64 {
@@ -41,25 +47,17 @@ fn part2(input: &str) -> i64 {
     let key = 811_589_153;
     let (_, arr) = numbers(input).unwrap();
     let size = arr.len();
-    let mut numbers: Vec<_> = arr.iter().copied().map(|x| x * key).enumerate().collect();
+    let numbers: Vec<_> = arr.into_iter().map(|v| v * key).collect();
+    let mut pairs: Vec<_> = numbers.iter().copied().enumerate().collect();
+
     for _ in 0..num_rounds {
-        for (original_index, &value) in arr.iter().enumerate() {
-            let index = numbers
-                .iter()
-                .position(|(idx, _)| *idx == original_index)
-                .unwrap();
-            let new_index = index as i64 + value;
-            let new_index = new_index.rem_euclid(size as i64 - 1);
-            let tmp = numbers.remove(index);
-            numbers.insert(new_index as usize, tmp);
-        }
-        let bla: Vec<_> = numbers.iter().map(|(_, x)| x).collect();
-        println!("{:?}", bla);
+        mix(&numbers, &mut pairs);
     }
-    let zero_idx = numbers.iter().position(|(_, x)| *x == 0).unwrap();
-    let (_, x1) = numbers[(zero_idx + 1_000) % size];
-    let (_, x2) = numbers[(zero_idx + 2_000) % size];
-    let (_, x3) = numbers[(zero_idx + 3_000) % size];
+
+    let zero_idx = pairs.iter().position(|(_, x)| *x == 0).unwrap();
+    let (_, x1) = pairs[(zero_idx + 1_000) % size];
+    let (_, x2) = pairs[(zero_idx + 2_000) % size];
+    let (_, x3) = pairs[(zero_idx + 3_000) % size];
     x1 + x2 + x3
 }
 
@@ -94,7 +92,7 @@ mod tests {
     #[test]
     fn part2_works() {
         let result = part2(INPUT);
-        let expected = 811589153i64;
+        let expected = 1623178306i64;
         assert_eq!(result, expected);
     }
 }
