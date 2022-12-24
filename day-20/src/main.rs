@@ -31,7 +31,7 @@ fn part1(input: &str) -> i64 {
 }
 
 fn mix(numbers: &[i64], pairs: &mut Vec<(usize, i64)>) {
-    for (idx, &value) in numbers.into_iter().enumerate() {
+    for (idx, &value) in numbers.iter().enumerate() {
         if value == 0 {
             continue;
         }
