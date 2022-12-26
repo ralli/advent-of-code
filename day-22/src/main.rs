@@ -564,11 +564,4 @@ mod tests {
         let expected = 6032;
         assert_eq!(result, expected);
     }
-
-    #[test]
-    fn part2_works() {
-        let result = part2(INPUT);
-        let expected = 301;
-        assert_eq!(result, expected);
-    }
 }
