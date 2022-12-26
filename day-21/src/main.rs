@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
@@ -145,8 +145,6 @@ struct Monkey<'a> {
     name: &'a str,
     job: Job<'a>,
 }
-
-impl<'a> Monkey<'a> {}
 
 fn monkeys(input: &str) -> IResult<&str, Vec<Monkey>> {
     separated_list1(line_ending, monkey)(input)
