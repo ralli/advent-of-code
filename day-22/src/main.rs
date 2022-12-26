@@ -96,7 +96,7 @@ impl Face {
             .unwrap()
     }
 
-    fn to_global(&self, p: &Point) -> Point {
+    fn transform_to_global(&self, p: &Point) -> Point {
         let (dr, dc) = self.offset();
         Point {
             row: p.row + dr,
@@ -104,7 +104,7 @@ impl Face {
         }
     }
 
-    fn to_local(&self, p: &Point) -> Point {
+    fn transform_to_local(&self, p: &Point) -> Point {
         let (dr, dc) = self.offset();
         Point {
             row: p.row - dr,
@@ -152,10 +152,6 @@ impl Point {
             row: self.row + dr,
             col: self.col + dc,
         }
-    }
-
-    fn to_global(&self, f: Face) -> Point {
-        f.to_global(self)
     }
 }
 
@@ -234,7 +230,7 @@ impl State {
 
     fn next_cube_position(&self) -> (Point, Direction) {
         let face = Face::from_global(&self.position);
-        let local = face.to_local(&self.position);
+        let local = face.transform_to_local(&self.position);
         let (dr, dc) = self.direction.delta();
         let moved = Point {
             row: local.row + dr,
@@ -388,7 +384,7 @@ impl State {
                             row: n - local.row,
                             col: n,
                         },
-                        Direction::Right,
+                        Direction::Left,
                     ),
                     (Face::Bottom, Direction::Up) => (
                         Face::Front,
@@ -441,12 +437,12 @@ impl State {
                 }
             };
 
-        let next_position = next_face.to_global(&next_local);
+        let next_position = next_face.transform_to_global(&next_local);
         let cell = self.board.get(&next_position).unwrap();
         if *cell == Cell::Wall {
             (self.position, self.direction)
         } else {
-            (next_face.to_global(&next_local), next_direction)
+            (next_face.transform_to_global(&next_local), next_direction)
         }
     }
 
