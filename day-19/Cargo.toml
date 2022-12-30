@@ -1,5 +1,5 @@
 [package]
-name = "day-25"
+name = "day-19"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.66"
+nom = "7.1.1"
