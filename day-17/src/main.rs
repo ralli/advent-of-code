@@ -43,7 +43,7 @@ fn part1(input: &str) -> i32 {
             if grid.can_draw(row - 1, col, rock) {
                 row -= 1;
             } else {
-                grid.draw(row, col, &rock);
+                grid.draw(row, col, rock);
                 break;
             }
         }
@@ -79,7 +79,7 @@ fn part2(input: &str) -> i64 {
             if grid.can_draw(row - 1, col, rock) {
                 row -= 1;
             } else {
-                grid.draw(row, col, &rock);
+                grid.draw(row, col, rock);
                 break;
             }
         }
@@ -197,16 +197,6 @@ impl Grid {
         }
     }
 
-    fn remove(&mut self, row: i32, col: i32, rock: &Rock) {
-        for (i, r) in rock.rows.iter().enumerate() {
-            for (j, &c) in r.iter().enumerate() {
-                if c != '.' {
-                    self.state.remove(&(row + i as i32, col + j as i32));
-                }
-            }
-        }
-    }
-
     fn width(&self) -> i32 {
         7
     }
@@ -244,16 +234,6 @@ impl fmt::Display for Grid {
 #[derive(Debug)]
 struct Rock {
     rows: Vec<Vec<char>>,
-}
-
-impl Rock {
-    fn width(&self) -> i32 {
-        self.rows[0].len() as i32
-    }
-
-    fn height(&self) -> i32 {
-        self.rows.len() as i32
-    }
 }
 
 fn create_rocks() -> Vec<Rock> {

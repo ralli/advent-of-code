@@ -54,12 +54,10 @@ fn part2(input: &str) -> anyhow::Result<usize> {
 #[derive(Debug, Clone)]
 enum FileEntry {
     Dir {
-        name: String,
         size: usize,
         entries: Vec<Rc<FileEntry>>,
     },
     File {
-        name: String,
         size: usize,
     },
 }
@@ -67,22 +65,14 @@ enum FileEntry {
 impl FileEntry {
     fn size(&self) -> usize {
         match self {
-            FileEntry::Dir {
-                name: _,
-                size,
-                entries: _,
-            } => *size,
-            FileEntry::File { name: _, size } => *size,
+            FileEntry::Dir { size, entries: _ } => *size,
+            FileEntry::File { size } => *size,
         }
     }
 
     fn size_of_dirs_less_than(&self, max_size: usize) -> usize {
         match self {
-            FileEntry::Dir {
-                name: _,
-                size,
-                entries,
-            } => {
+            FileEntry::Dir { size, entries } => {
                 let child_sum = entries
                     .iter()
                     .map(|e| e.size_of_dirs_less_than(max_size))
@@ -93,17 +83,13 @@ impl FileEntry {
                     child_sum
                 }
             }
-            FileEntry::File { name: _, size: _ } => 0,
+            FileEntry::File { size: _ } => 0,
         }
     }
 
     fn smallest_dir_size_larger_than(&self, min_size: usize) -> Option<usize> {
         match self {
-            FileEntry::Dir {
-                name: _,
-                size,
-                entries,
-            } => {
+            FileEntry::Dir { size, entries } => {
                 let min_child_size = entries
                     .iter()
                     .filter_map(|e| e.smallest_dir_size_larger_than(min_size))
@@ -117,7 +103,7 @@ impl FileEntry {
                     min_child_size
                 }
             }
-            FileEntry::File { name: _, size: _ } => None,
+            FileEntry::File { size: _ } => None,
         }
     }
 }
@@ -134,39 +120,34 @@ impl<'a> Processor<'a> {
     }
 
     fn build_cd(&mut self) -> anyhow::Result<Rc<FileEntry>> {
-        if let Some(Line::Cd(dir)) = self.it.next() {
-            self.process_dir(dir.as_str())
+        if let Some(Line::Cd(_)) = self.it.next() {
+            self.process_dir()
         } else {
             Err(anyhow!("no root provided"))
         }
     }
 
-    fn process_dir(&mut self, dir_name: &str) -> anyhow::Result<Rc<FileEntry>> {
+    fn process_dir(&mut self) -> anyhow::Result<Rc<FileEntry>> {
         let mut entries: Vec<Rc<FileEntry>> = Vec::new();
         while let Some(item) = self.it.next() {
             match item {
                 Line::Cd(dir) => {
                     if dir == ".." {
                         return Ok(Rc::new(FileEntry::Dir {
-                            name: dir_name.to_owned(),
                             size: entries.iter().map(|e| e.size()).sum(),
                             entries,
                         }));
                     } else {
-                        entries.push(self.process_dir(dir)?)
+                        entries.push(self.process_dir()?)
                     }
                 }
                 Line::Ls => {}
-                Line::Directory(_) => {}
-                Line::File(size, name) => entries.push(Rc::new(FileEntry::File {
-                    name: name.to_owned(),
-                    size: *size,
-                })),
+                Line::Directory() => {}
+                Line::File(size) => entries.push(Rc::new(FileEntry::File { size: *size })),
             }
         }
 
         Ok(Rc::new(FileEntry::Dir {
-            name: dir_name.to_owned(),
             size: entries.iter().map(|e| e.size()).sum(),
             entries,
         }))
@@ -177,8 +158,8 @@ impl<'a> Processor<'a> {
 enum Line {
     Cd(String),
     Ls,
-    Directory(String),
-    File(usize, String),
+    Directory(),
+    File(usize),
 }
 
 fn parse_file(input: &str) -> IResult<&str, Vec<Line>> {
@@ -209,9 +190,9 @@ fn parse_ls(input: &str) -> IResult<&str, Line> {
 }
 
 fn parse_directory(input: &str) -> IResult<&str, Line> {
-    let (input, name) = preceded(tag("dir "), not_line_ending)(input)?;
+    let (input, _) = preceded(tag("dir "), not_line_ending)(input)?;
 
-    Ok((input, Line::Directory(name.to_owned())))
+    Ok((input, Line::Directory()))
 }
 
 fn parse_file_line(input: &str) -> IResult<&str, Line> {
@@ -219,9 +200,9 @@ fn parse_file_line(input: &str) -> IResult<&str, Line> {
 
     let (input, size) = u64_parser(input)?;
     let (input, _) = space1(input)?;
-    let (input, name) = not_line_ending(input)?;
+    let (input, _) = not_line_ending(input)?;
 
-    Ok((input, Line::File(size as usize, name.to_owned())))
+    Ok((input, Line::File(size as usize)))
 }
 
 fn read_file(filename: &str) -> anyhow::Result<String> {

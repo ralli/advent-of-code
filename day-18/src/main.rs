@@ -155,7 +155,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn part2_works() {
         let result = part2(INPUT);
         let expected = 58;
