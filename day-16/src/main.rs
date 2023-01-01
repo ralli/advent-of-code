@@ -1,4 +1,30 @@
-use std::collections::{HashMap, VecDeque};
+/// Did not get part 2 of my own solution to work.
+/// this solution is based on the work of hyper-neutrino
+/// Python implementation: https://github.com/hyper-neutrino/advent-of-code/blob/main/2022/day16p2.py
+/// Video: https://www.youtube.com/watch?v=bLMj50cpOug&list=PLnNm9syGLD3yf-YW-a5XNh1CJN07xr0Kz&index=16
+///
+/// Chose this solution as it looks relatively simple to me.
+///
+/// The basic idea of part 1 is a brute force approach:
+///   valves, opening and tunnels form a directed graph (all weights are 1).
+///   traverse all paths through that graph and get the maximum flow (sum of all opened valves)
+///   Optimization: make the graph more compact by removing all valves with flow 0.
+///   Use a depth first search through that compact graph. Memoize intermediate results.
+///
+/// Part 2: The human and the elephant can act independently as long as they try to open a
+/// distinct set of valves.
+///
+/// Generate all permutations of open valves.
+///
+/// For each permutation
+///   get the optimum result of the human for that permutation.
+///   get the optimum result for the elephant for the inverted permutation (if valve[i] is open
+///   for the human, it is closed for the elephant an vice versa)
+///
+/// As hyper-neutrinos solution this solution uses bit-vectors as representation of open and
+/// closed valves.
+///
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
@@ -20,63 +46,153 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part1(input: &str) -> i32 {
-    let (_, nodes) = nodes(input).unwrap();
-    let mut q = VecDeque::new();
-    let total_time = 30;
-    let mut max_flow = 0;
-    let weights: HashMap<&str, i32> = nodes.iter().map(|(s, f, _)| (*s, *f)).collect();
-    let adj: HashMap<&str, &Vec<&str>> = nodes.iter().map(|(s, _, n)| (*s, n)).collect();
-    let mut best: HashMap<&str, i32> = HashMap::new();
-
+    let (_, valves) = valves(input).unwrap();
+    let max_time = 30;
     let start = "AA";
-    q.push_back((start, 0, total_time, vec![]));
-    // q.push_back((start, *f, total_time - 1, vec![start]));
+    let mut searcher = MaxFlowSearcher::new(&valves);
+    searcher.max_flow(max_time, start, 0)
+}
 
-    while !q.is_empty() {
-        let (current, current_flow, time_left, opened) = q.pop_front().unwrap();
+fn part2(input: &str) -> i32 {
+    let (_, valves) = valves(input).unwrap();
+    let non_empty_count = valves.values().filter(|v| v.flow > 0).count();
+    let num_tries = (1u32 << non_empty_count) - 1;
+    let mut searcher = MaxFlowSearcher::new(&valves);
+    let max_time = 26;
+    let start = "AA";
 
-        // println!("{} {} {} {:?}", current, current_flow, time_left, opened);
+    (0..((num_tries + 1) / 2))
+        .map(|i| searcher.max_flow(max_time, start, i) + searcher.max_flow(max_time, start, !i))
+        .max()
+        .unwrap()
+}
 
-        if current_flow > max_flow {
-            max_flow = current_flow;
-        }
+#[derive(Debug, Clone, Copy)]
+struct ValveDistance<'a> {
+    name: &'a str,
+    distance: i32,
+}
 
-        if time_left > 0 && !opened.iter().any(|s| s == &current) {
-            let w = *weights.get(current).unwrap();
-            if w > 0 {
-                let mut next_opened = opened.clone();
-                next_opened.push(current);
-                let next_flow = (time_left - 1) * w + current_flow;
-                q.push_back((current, next_flow, time_left - 1, next_opened));
-            }
-        }
+fn all_distances_from<'a>(
+    valves: &'a HashMap<&str, Valve>,
+) -> HashMap<&'a str, Vec<ValveDistance<'a>>> {
+    valves
+        .values()
+        .filter(|v| v.name == "AA" || v.flow > 0)
+        .map(|valve| (valve.name, distances_from(valve.name, valves)))
+        .collect()
+}
 
-        if time_left > 0 {
-            let next = *adj.get(current).unwrap();
-            for s in next.iter() {
-                let best_flow = best.entry(*s).or_insert(-1);
-                if current_flow > *best_flow {
-                    *best_flow = current_flow;
-                    q.push_back((s, current_flow, time_left - 1, opened.clone()));
+fn distances_from<'a>(
+    start_valve: &str,
+    valves: &'a HashMap<&str, Valve>,
+) -> Vec<ValveDistance<'a>> {
+    let mut visited = HashSet::from([start_valve]);
+    let mut distances: Vec<ValveDistance> = Vec::new();
+    let mut q = VecDeque::from([(0, valves.get(start_valve).unwrap())]);
+
+    while let Some((distance, current)) = q.pop_front() {
+        for neighbour in current.tunnels.iter() {
+            if visited.insert(neighbour) {
+                let neighbour_valve = valves.get(neighbour).unwrap();
+                if neighbour_valve.flow > 0 {
+                    distances.push(ValveDistance {
+                        name: neighbour,
+                        distance: distance + 1,
+                    });
                 }
+                q.push_back((distance + 1, neighbour_valve));
             }
         }
     }
 
-    max_flow
+    distances
 }
 
-fn part2(_input: &str) -> usize {
-    0
+fn valve_indexes<'a>(valves: &'a HashMap<&str, Valve>) -> HashMap<&'a str, u32> {
+    valves
+        .values()
+        .filter(|v| v.flow > 0)
+        .enumerate()
+        .map(|(i, v)| (v.name, i as u32))
+        .collect()
 }
 
-type Node<'a> = (&'a str, i32, Vec<&'a str>);
-
-fn nodes(input: &str) -> IResult<&str, Vec<Node>> {
-    separated_list1(line_ending, node)(input)
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+struct CacheKey<'a> {
+    valve: &'a str,
+    time_remaining: i32,
+    valves_open: u32,
 }
 
-fn node(input: &str) -> IResult<&str, Node> {
+struct MaxFlowSearcher<'a> {
+    valves: &'a HashMap<&'a str, Valve<'a>>,
+    all_distances: HashMap<&'a str, Vec<ValveDistance<'a>>>,
+    valve_indexes: HashMap<&'a str, u32>,
+    cache: HashMap<CacheKey<'a>, i32>,
+}
+
+impl<'a> MaxFlowSearcher<'a> {
+    fn new(valves: &'a HashMap<&'a str, Valve>) -> Self {
+        Self {
+            valves,
+            all_distances: all_distances_from(valves),
+            valve_indexes: valve_indexes(valves),
+            cache: HashMap::new(),
+        }
+    }
+
+    fn max_flow(&mut self, time: i32, valve: &'a str, valves_open: u32) -> i32 {
+        let key = CacheKey {
+            time_remaining: time,
+            valve,
+            valves_open,
+        };
+        if let Some(result) = self.cache.get(&key) {
+            return *result;
+        }
+        let mut max_val = 0;
+
+        let distances = self.all_distances.get(valve).cloned().unwrap();
+        for neighbour in distances {
+            let valve_index = self.valve_indexes.get(neighbour.name).copied().unwrap();
+            let bit = 1u32 << valve_index;
+            if (valves_open & bit) != 0 {
+                continue;
+            }
+            let time_left = time - neighbour.distance - 1;
+            if time_left <= 0 {
+                continue;
+            }
+            let flow = self.valves.get(neighbour.name).unwrap().flow;
+            max_val = max_val.max(
+                time_left * flow + self.max_flow(time_left, neighbour.name, valves_open | bit),
+            );
+        }
+
+        self.cache.insert(key, max_val);
+        max_val
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct Valve<'a> {
+    name: &'a str,
+    flow: i32,
+    tunnels: Vec<&'a str>,
+}
+
+fn valves(input: &str) -> IResult<&str, HashMap<&str, Valve>> {
+    let (input, valves) = separated_list1(line_ending, valve)(input)?;
+    let valve_map = valves
+        .into_iter()
+        .map(|valve| (valve.name, valve))
+        .collect();
+
+    Ok((input, valve_map))
+}
+
+fn valve(input: &str) -> IResult<&str, Valve> {
     let (input, _) = tag("Valve ")(input)?;
     let (input, node) = alpha1(input)?;
     let (input, _) = tag(" has flow rate=")(input)?;
@@ -87,7 +203,14 @@ fn node(input: &str) -> IResult<&str, Node> {
     ))(input)?;
     let (input, next_nodes) = separated_list1(tag(", "), alpha1)(input)?;
 
-    Ok((input, (node, flow_rate, next_nodes)))
+    Ok((
+        input,
+        Valve {
+            name: node,
+            flow: flow_rate,
+            tunnels: next_nodes,
+        },
+    ))
 }
 
 fn read_file(filename: &str) -> anyhow::Result<String> {
@@ -120,7 +243,7 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
     #[test]
     fn part2_works() {
         let result = part2(INPUT);
-        let expected = 56000011;
+        let expected = 1707;
         assert_eq!(result, expected);
     }
 }
