@@ -7,8 +7,8 @@ use std::io::Read;
 use anyhow::Context;
 use nom::character::complete::{digit1, line_ending};
 use nom::combinator::map;
-use nom::IResult;
 use nom::multi::separated_list1;
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-9/input.txt";
@@ -29,11 +29,13 @@ fn part1(input: &str) -> i32 {
     result.into_iter().map(|(_, _, v)| v + 1).sum()
 }
 
-
 fn part2(input: &str) -> usize {
     let (_, grid) = grid(input).unwrap();
     let points = low_points(&grid);
-    let basins: BTreeSet<_> = points.into_iter().map(|(row, col, _)| basin_size(&grid, row, col)).collect();
+    let basins: BTreeSet<_> = points
+        .into_iter()
+        .map(|(row, col, _)| basin_size(&grid, row, col))
+        .collect();
     let mut sizes: Vec<usize> = basins.into_iter().map(|basin| basin.len()).collect();
     sizes.sort_by(|a, b| b.cmp(a));
     sizes.iter().take(3).product()
@@ -45,7 +47,6 @@ fn basin_size(grid: &Grid, row: usize, col: usize) -> BTreeSet<(usize, usize)> {
     let height = grid.len();
     let mut q = VecDeque::from([(row, col, value)]);
     let mut visited = BTreeSet::from([(row, col)]);
-
 
     while let Some((row, col, _)) = q.pop_front() {
         if row > 0 && grid[row - 1][col] != 9 && visited.insert((row - 1, col)) {
@@ -105,7 +106,9 @@ fn grid(input: &str) -> IResult<&str, Grid> {
 }
 
 fn line(input: &str) -> IResult<&str, Vec<i32>> {
-    map(digit1, |s: &str| s.chars().map(|c| (c as i32 - '0' as i32)).collect())(input)
+    map(digit1, |s: &str| {
+        s.chars().map(|c| (c as i32 - '0' as i32)).collect()
+    })(input)
 }
 
 fn read_file(name: &str) -> anyhow::Result<String> {

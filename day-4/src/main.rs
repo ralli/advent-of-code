@@ -5,9 +5,9 @@ use std::io::Read;
 use anyhow::Context;
 use nom::bytes::complete::tag;
 use nom::character::complete::{line_ending, space0, space1};
-use nom::IResult;
 use nom::multi::{many1, separated_list1};
 use nom::sequence::preceded;
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-4/input.txt";
@@ -32,7 +32,12 @@ fn part1(input: &str) -> Option<i32> {
 
     for &number in input.numbers.iter() {
         numbers.insert(number);
-        if let Some(max_score) = input.boards.iter().flat_map(|b| board_score(b, &numbers)).max() {
+        if let Some(max_score) = input
+            .boards
+            .iter()
+            .flat_map(|b| board_score(b, &numbers))
+            .max()
+        {
             return Some(max_score * number);
         }
     }
@@ -57,10 +62,12 @@ fn board_score(board: &Vec<Vec<i32>>, numbers: &HashSet<i32>) -> Option<i32> {
 }
 
 fn is_solved(board: &Vec<Vec<i32>>, numbers: &HashSet<i32>) -> bool {
-    board.iter().any(|row| row.iter().all(|v| numbers.contains(v))) ||
-        (0..board[0].len()).any(|col| (0..board.len()).all(|row| numbers.contains(&board[row][col])))
+    board
+        .iter()
+        .any(|row| row.iter().all(|v| numbers.contains(v)))
+        || (0..board[0].len())
+            .any(|col| (0..board.len()).all(|row| numbers.contains(&board[row][col])))
 }
-
 
 fn part2(input: &str) -> Option<i32> {
     let (_, input) = parse_input(input).unwrap();

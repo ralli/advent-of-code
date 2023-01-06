@@ -3,8 +3,8 @@ use std::io::Read;
 
 use anyhow::Context;
 use nom::bytes::complete::tag;
-use nom::IResult;
 use nom::multi::separated_list1;
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-7/input.txt";
@@ -23,7 +23,10 @@ fn part1(input: &str) -> i32 {
     let (_, positions) = positions(input).unwrap();
     let min_position = positions.iter().min().copied().unwrap();
     let max_position = positions.iter().max().copied().unwrap();
-    (min_position..=max_position).map(|p| fuel_consumtion(&positions, p)).min().unwrap()
+    (min_position..=max_position)
+        .map(|p| fuel_consumtion(&positions, p))
+        .min()
+        .unwrap()
 }
 
 fn fuel_consumtion(positions: &[i32], position: i32) -> i32 {
@@ -34,14 +37,20 @@ fn part2(input: &str) -> i32 {
     let (_, positions) = positions(input).unwrap();
     let min_position = positions.iter().min().copied().unwrap();
     let max_position = positions.iter().max().copied().unwrap();
-    (min_position..=max_position).map(|p| crab_fuel_consumtion(&positions, p)).min().unwrap()
+    (min_position..=max_position)
+        .map(|p| crab_fuel_consumtion(&positions, p))
+        .min()
+        .unwrap()
 }
 
 fn crab_fuel_consumtion(positions: &[i32], position: i32) -> i32 {
-    positions.iter().map(|&p| {
-        let n = (p - position).abs();
-        n * (n + 1) / 2
-    }).sum()
+    positions
+        .iter()
+        .map(|&p| {
+            let n = (p - position).abs();
+            n * (n + 1) / 2
+        })
+        .sum()
 }
 
 fn positions(input: &str) -> IResult<&str, Vec<i32>> {

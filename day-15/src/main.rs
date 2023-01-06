@@ -1,14 +1,14 @@
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, BTreeMap};
+use std::collections::{BTreeMap, BinaryHeap};
 use std::fs::File;
 use std::io::Read;
 
 use anyhow::Context;
 use nom::character::complete::{digit1, line_ending, multispace0};
 use nom::combinator::{eof, map};
-use nom::IResult;
 use nom::multi::separated_list1;
 use nom::sequence::{terminated, tuple};
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-15/input.txt";
@@ -53,7 +53,11 @@ impl PartialOrd for Entry {
 }
 
 fn find_lowest_total_risk_part1(grid: &Grid) -> Option<u32> {
-    let mut q = BinaryHeap::from([Entry { row: 0, col: 0, cost: 0 }]);
+    let mut q = BinaryHeap::from([Entry {
+        row: 0,
+        col: 0,
+        cost: 0,
+    }]);
     let width = grid.cells[0].len();
     let height = grid.cells.len();
     let mut dists = BTreeMap::new();
@@ -86,11 +90,19 @@ fn find_lowest_total_risk_part1(grid: &Grid) -> Option<u32> {
 
             if let Some(&test_cost) = dists.get(&(next_row, next_col)) {
                 if next_cost < test_cost {
-                    q.push(Entry { row: next_row, col: next_col, cost: next_cost });
+                    q.push(Entry {
+                        row: next_row,
+                        col: next_col,
+                        cost: next_cost,
+                    });
                     dists.insert((next_row, next_col), next_cost);
                 }
             } else {
-                q.push(Entry { row: next_row, col: next_col, cost: next_cost });
+                q.push(Entry {
+                    row: next_row,
+                    col: next_col,
+                    cost: next_cost,
+                });
                 dists.insert((next_row, next_col), next_cost);
             }
         }
@@ -100,7 +112,11 @@ fn find_lowest_total_risk_part1(grid: &Grid) -> Option<u32> {
 }
 
 fn find_lowest_total_risk_part2(grid: &Grid) -> Option<u32> {
-    let mut q = BinaryHeap::from([Entry { row: 0, col: 0, cost: 0 }]);
+    let mut q = BinaryHeap::from([Entry {
+        row: 0,
+        col: 0,
+        cost: 0,
+    }]);
     let width = grid.width();
     let height = grid.height();
     let mut dists = BTreeMap::new();
@@ -128,14 +144,17 @@ fn find_lowest_total_risk_part2(grid: &Grid) -> Option<u32> {
             let entry = dists.entry((next_row, next_col)).or_insert(u32::MAX);
             if next_cost < *entry {
                 *entry = next_cost;
-                q.push(Entry { cost: next_cost, row: next_row, col: next_col});
+                q.push(Entry {
+                    cost: next_cost,
+                    row: next_row,
+                    col: next_col,
+                });
             }
         }
     }
 
     None
 }
-
 
 #[derive(Debug, Copy, Clone)]
 struct Position {
@@ -172,14 +191,11 @@ impl Grid {
 fn grid(input: &str) -> IResult<&str, Grid> {
     let (input, lines) = separated_list1(
         line_ending,
-        map(
-            digit1,
-            |s: &str|
-                s
-                    .chars()
-                    .map(|c| c.to_digit(10).unwrap())
-                    .collect::<Vec<_>>(),
-        ),
+        map(digit1, |s: &str| {
+            s.chars()
+                .map(|c| c.to_digit(10).unwrap())
+                .collect::<Vec<_>>()
+        }),
     )(input)?;
 
     Ok((input, Grid { cells: lines }))

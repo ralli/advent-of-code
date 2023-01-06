@@ -5,9 +5,9 @@ use std::io::Read;
 use anyhow::Context;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, line_ending, space1};
-use nom::IResult;
 use nom::multi::separated_list1;
 use nom::sequence::tuple;
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-8/input.txt";
@@ -28,19 +28,18 @@ fn part1(input: &str) -> usize {
     entries
         .into_iter()
         .map(|e| e.output_value)
-        .map(|d|
-            d
-                .iter()
+        .map(|d| {
+            d.iter()
                 .filter(|d| unique_segment_numbers.contains(&d.len()))
                 .count()
-        ).sum()
+        })
+        .sum()
 }
 
 fn part2(input: &str) -> i32 {
     let (_, entries) = entries(input).unwrap();
     entries.iter().map(|entry| output(entry)).sum()
 }
-
 
 fn output(entry: &Entry) -> i32 {
     let digits = digits(entry);
@@ -55,28 +54,55 @@ fn digits(entry: &Entry) -> BTreeMap<&Vec<char>, i32> {
     let four = entry.signal_patterns.iter().find(|e| e.len() == 4).unwrap();
     let seven = entry.signal_patterns.iter().find(|e| e.len() == 3).unwrap();
     let eight = entry.signal_patterns.iter().find(|e| e.len() == 7).unwrap();
-    let six = entry.signal_patterns.iter().find(|e| e.len() == 6 && !one.iter().all(|c| e.contains(c))).unwrap();
-    let nine = entry.signal_patterns.iter().find(|e| e.len() == 6 && four.iter().all(|c| e.contains(c))).unwrap();
-    let zero = entry.signal_patterns.iter().find(|e| e.len() == 6 && one.iter().all(|c| e.contains(c)) && !four.iter().all(|c| e.contains(c))).unwrap();
+    let six = entry
+        .signal_patterns
+        .iter()
+        .find(|e| e.len() == 6 && !one.iter().all(|c| e.contains(c)))
+        .unwrap();
+    let nine = entry
+        .signal_patterns
+        .iter()
+        .find(|e| e.len() == 6 && four.iter().all(|c| e.contains(c)))
+        .unwrap();
+    let zero = entry
+        .signal_patterns
+        .iter()
+        .find(|e| {
+            e.len() == 6 && one.iter().all(|c| e.contains(c)) && !four.iter().all(|c| e.contains(c))
+        })
+        .unwrap();
 
     let segment_c = one.iter().find(|&c| !six.contains(c)).unwrap();
     let segment_f = one.iter().find(|&c| six.contains(c)).unwrap();
 
-    let two = entry.signal_patterns.iter().find(|e| e.len() == 5 && e.contains(segment_c) && !e.contains(segment_f)).unwrap();
-    let three = entry.signal_patterns.iter().find(|e| e.len() == 5 && e.contains(segment_c) && e.contains(segment_f)).unwrap();
-    let five = entry.signal_patterns.iter().find(|e| e.len() == 5 && !e.contains(segment_c) && e.contains(segment_f)).unwrap();
+    let two = entry
+        .signal_patterns
+        .iter()
+        .find(|e| e.len() == 5 && e.contains(segment_c) && !e.contains(segment_f))
+        .unwrap();
+    let three = entry
+        .signal_patterns
+        .iter()
+        .find(|e| e.len() == 5 && e.contains(segment_c) && e.contains(segment_f))
+        .unwrap();
+    let five = entry
+        .signal_patterns
+        .iter()
+        .find(|e| e.len() == 5 && !e.contains(segment_c) && e.contains(segment_f))
+        .unwrap();
 
-
-    let digits = vec![(zero, 0),
-                      (one, 1),
-                      (two, 2),
-                      (three, 3),
-                      (four, 4),
-                      (five, 5),
-                      (six, 6),
-                      (seven, 7),
-                      (eight, 8),
-                      (nine, 9)];
+    let digits = vec![
+        (zero, 0),
+        (one, 1),
+        (two, 2),
+        (three, 3),
+        (four, 4),
+        (five, 5),
+        (six, 6),
+        (seven, 7),
+        (eight, 8),
+        (nine, 9),
+    ];
 
     // println!("{:?}", digits);
     let result = BTreeMap::from_iter(digits.into_iter());
@@ -101,20 +127,31 @@ fn entry(input: &str) -> IResult<&str, Entry> {
     let (input, _) = tuple((space1, tag("|"), space1))(input)?;
     let (input, output_value) = digit_patterns(input)?;
 
-    let signal_patterns = signal_patterns.iter().map(|p| {
-        let mut v: Vec<char> = p.chars().collect();
-        v.sort();
-        v
-    }).collect();
+    let signal_patterns = signal_patterns
+        .iter()
+        .map(|p| {
+            let mut v: Vec<char> = p.chars().collect();
+            v.sort();
+            v
+        })
+        .collect();
 
-    let output_value = output_value.iter().map(|p| {
-        let mut v: Vec<char> = p.chars().collect();
-        v.sort();
-        v
-    }).collect();
+    let output_value = output_value
+        .iter()
+        .map(|p| {
+            let mut v: Vec<char> = p.chars().collect();
+            v.sort();
+            v
+        })
+        .collect();
 
-
-    Ok((input, Entry { signal_patterns, output_value }))
+    Ok((
+        input,
+        Entry {
+            signal_patterns,
+            output_value,
+        },
+    ))
 }
 
 fn digit_patterns(input: &str) -> IResult<&str, Vec<&str>> {

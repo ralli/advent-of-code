@@ -5,9 +5,9 @@ use std::io::Read;
 
 use anyhow::Context;
 use nom::character::complete::{line_ending, one_of};
-use nom::combinator::{recognize};
-use nom::IResult;
+use nom::combinator::recognize;
 use nom::multi::{many1, separated_list1};
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-10/input.txt";
@@ -24,20 +24,23 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(input: &str) -> i32 {
     let (_, lines) = lines(input).unwrap();
-    lines.iter()
-        .filter_map(|&line| first_incorrect(line)).map(|(found, _)| score_for_part1(found)).sum()
+    lines
+        .iter()
+        .filter_map(|&line| first_incorrect(line))
+        .map(|(found, _)| score_for_part1(found))
+        .sum()
 }
 
 fn part2(input: &str) -> i64 {
     let (_, lines) = lines(input).unwrap();
-    let bla: Vec<_> = lines.iter().filter_map(|line| missing_closing(line)).collect();
+    let bla: Vec<_> = lines
+        .iter()
+        .filter_map(|line| missing_closing(line))
+        .collect();
     let mut scores: Vec<_> = bla
         .iter()
-        .map(|s|
-            s
-                .chars()
-                .fold(0, |a, c| a * 5 + score_for_part2(c))
-        ).collect();
+        .map(|s| s.chars().fold(0, |a, c| a * 5 + score_for_part2(c)))
+        .collect();
     scores.sort();
     scores[scores.len() / 2]
 }
@@ -48,7 +51,7 @@ fn score_for_part1(c: char) -> i32 {
         ']' => 57,
         '}' => 1197,
         '>' => 25137,
-        c => unreachable!("{}", c)
+        c => unreachable!("{}", c),
     }
 }
 
@@ -58,7 +61,7 @@ fn score_for_part2(c: char) -> i64 {
         ']' => 2,
         '}' => 3,
         '>' => 4,
-        c => unreachable!("{}", c)
+        c => unreachable!("{}", c),
     }
 }
 
@@ -76,7 +79,7 @@ fn first_incorrect(input: &str) -> Option<(char, char)> {
                     }
                 }
             }
-            c => unreachable!("{}", c)
+            c => unreachable!("{}", c),
         }
     }
     None
@@ -96,7 +99,7 @@ fn missing_closing(input: &str) -> Option<String> {
                     }
                 }
             }
-            c => unreachable!("{}", c)
+            c => unreachable!("{}", c),
         }
     }
 
@@ -109,7 +112,7 @@ fn closing_character(open: char) -> char {
         '[' => ']',
         '{' => '}',
         '<' => '>',
-        _ => unreachable!("{}", open)
+        _ => unreachable!("{}", open),
     }
 }
 

@@ -7,11 +7,11 @@ use std::fs::File;
 use std::io::Read;
 
 use anyhow::Context;
-use nom::{IResult};
 use nom::bytes::complete::tag;
 use nom::character::complete;
 use nom::character::complete::{line_ending, one_of};
 use nom::multi::{many1, separated_list1};
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-13/input.txt";
@@ -29,8 +29,16 @@ fn part1(input: &str) -> usize {
     let (_, bla) = parse_input(input).unwrap();
     let instruction = bla.instructions.first().unwrap();
     let next_points: BTreeSet<Point> = match instruction {
-        FoldInstruction::X(x) => bla.points.into_iter().map(|p| p.folded_along_x(*x)).collect(),
-        FoldInstruction::Y(y) => bla.points.into_iter().map(|p| p.folded_along_y(*y)).collect(),
+        FoldInstruction::X(x) => bla
+            .points
+            .into_iter()
+            .map(|p| p.folded_along_x(*x))
+            .collect(),
+        FoldInstruction::Y(y) => bla
+            .points
+            .into_iter()
+            .map(|p| p.folded_along_y(*y))
+            .collect(),
     };
     let result = next_points.len();
     result
@@ -38,16 +46,23 @@ fn part1(input: &str) -> usize {
 
 fn part2(input: &str) {
     let (_, bla) = parse_input(input).unwrap();
-    let final_points = bla.instructions.iter().fold(bla.points, |points, instruction|
-        {
+    let final_points = bla
+        .instructions
+        .iter()
+        .fold(bla.points, |points, instruction| {
             let next_points: BTreeSet<Point> = match instruction {
                 FoldInstruction::X(x) => points.into_iter().map(|p| p.folded_along_x(*x)).collect(),
                 FoldInstruction::Y(y) => points.into_iter().map(|p| p.folded_along_y(*y)).collect(),
             };
             next_points
-        },
+        });
+    println!(
+        "{}",
+        Input {
+            points: final_points,
+            instructions: Vec::new()
+        }
     );
-    println!("{}", Input { points: final_points, instructions: Vec::new() });
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -100,7 +115,10 @@ impl Point {
             *self
         } else {
             let xdiff = self.x - x;
-            Point { x: x - xdiff, y: self.y }
+            Point {
+                x: x - xdiff,
+                y: self.y,
+            }
         }
     }
 
@@ -109,7 +127,10 @@ impl Point {
             *self
         } else {
             let ydiff = self.y - y;
-            Point { x: self.x, y: y - ydiff }
+            Point {
+                x: self.x,
+                y: y - ydiff,
+            }
         }
     }
 }
@@ -119,10 +140,13 @@ fn parse_input(input: &str) -> IResult<&str, Input> {
     let (input, _) = many1(line_ending)(input)?;
     let (input, instructions) = instructions(input)?;
 
-    Ok((input, Input {
-        points: points.into_iter().collect(),
-        instructions,
-    }))
+    Ok((
+        input,
+        Input {
+            points: points.into_iter().collect(),
+            instructions,
+        },
+    ))
 }
 
 fn instructions(input: &str) -> IResult<&str, Vec<FoldInstruction>> {

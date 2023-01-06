@@ -3,10 +3,10 @@ use std::fs::File;
 use std::io::Read;
 
 use anyhow::Context;
-use nom::{AsChar, IResult, Slice};
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, line_ending, satisfy};
 use nom::multi::{many1, separated_list1};
+use nom::{AsChar, IResult, Slice};
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-14/input.txt";
@@ -59,8 +59,7 @@ fn create_histogram(input: &str) -> BTreeMap<char, i32> {
     input.chars().for_each(|c| {
         let count = result.entry(c).or_insert(0);
         *count += 1;
-    }
-    );
+    });
     result
 }
 
@@ -146,7 +145,13 @@ fn input_data(input: &str) -> IResult<&str, InputData> {
     let (input, _) = many1(line_ending)(input)?;
     let (input, rules) = separated_list1(line_ending, rule)(input)?;
 
-    Ok((input, InputData { template, rules: rules.into_iter().collect() }))
+    Ok((
+        input,
+        InputData {
+            template,
+            rules: rules.into_iter().collect(),
+        },
+    ))
 }
 
 fn rule(input: &str) -> IResult<&str, (&str, char)> {

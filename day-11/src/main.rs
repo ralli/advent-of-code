@@ -5,11 +5,11 @@ use std::fs::File;
 use std::io::Read;
 
 use anyhow::Context;
+use itertools::Itertools;
 use nom::character::complete::{digit1, line_ending};
 use nom::combinator::map;
-use nom::IResult;
 use nom::multi::separated_list1;
-use itertools::Itertools;
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-11/input.txt";
@@ -49,11 +49,15 @@ fn part2(input: &str) -> i32 {
     result
 }
 
-
 const DELTAS: [(i32, i32); 8] = [
-    (-1, -1), (-1, 0), (-1, 1),
-    (0, -1), (0, 1),
-    (1, -1), (1, 0), (1, 1)
+    (-1, -1),
+    (-1, 0),
+    (-1, 1),
+    (0, -1),
+    (0, 1),
+    (1, -1),
+    (1, 0),
+    (1, 1),
 ];
 
 fn all_octopuses_flashed(grid: &Grid) -> bool {
@@ -88,9 +92,7 @@ fn flash_octopuses(grid: &mut Grid) -> i32 {
 
         let next_coords = DELTAS
             .into_iter()
-            .map(|(dr, dc)| {
-                (row + dr, col + dc)
-            })
+            .map(|(dr, dc)| (row + dr, col + dc))
             .filter(|(r, c)| *r >= 0 && *c >= 0 && *r < height && *c < width);
 
         for (r, c) in next_coords.clone() {
@@ -131,14 +133,9 @@ fn lines(input: &str) -> IResult<&str, Grid> {
 }
 
 fn line(input: &str) -> IResult<&str, Vec<i32>> {
-    map(
-        digit1,
-        |s: &str|
-            s
-                .chars()
-                .map(|c| c.to_digit(10).unwrap() as i32)
-                .collect(),
-    )(input)
+    map(digit1, |s: &str| {
+        s.chars().map(|c| c.to_digit(10).unwrap() as i32).collect()
+    })(input)
 }
 
 fn read_file(name: &str) -> anyhow::Result<String> {
@@ -153,7 +150,6 @@ mod tests {
     use super::*;
 
     const INPUT: &str = include_str!("../test.txt");
-
 
     #[test]
     fn part1_works() {

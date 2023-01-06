@@ -5,9 +5,9 @@ use std::io::Read;
 use anyhow::Context;
 use nom::bytes::complete::tag;
 use nom::character::complete::{line_ending, space0, space1};
-use nom::IResult;
 use nom::multi::{many1, separated_list1};
 use nom::sequence::{delimited, preceded};
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-5/input.txt";
@@ -26,7 +26,10 @@ fn part1(input: &str) -> usize {
     let (_, lines) = lines(input).unwrap();
     let mut points: HashMap<(i32, i32), i32> = HashMap::new();
 
-    for line in lines.iter().filter(|l| l.p1.0 == l.p2.0 || l.p1.1 == l.p2.1) {
+    for line in lines
+        .iter()
+        .filter(|l| l.p1.0 == l.p2.0 || l.p1.1 == l.p2.1)
+    {
         let x1 = line.p1.0.min(line.p2.0);
         let x2 = line.p1.0.max(line.p2.0);
         let y1 = line.p1.1.min(line.p2.1);

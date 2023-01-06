@@ -5,10 +5,10 @@ use std::fs::File;
 use std::io::Read;
 
 use anyhow::Context;
-use nom::character::complete::{alpha1, line_ending};
-use nom::{IResult, Parser};
-use nom::multi::separated_list1;
 use nom::bytes::complete::tag;
+use nom::character::complete::{alpha1, line_ending};
+use nom::multi::separated_list1;
+use nom::{IResult, Parser};
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-12/input.txt";
@@ -99,7 +99,6 @@ fn num_paths2(adj: &BTreeMap<&str, Vec<&str>>) -> usize {
 fn first_is_lowercase(s: &str) -> bool {
     s.chars().next().map(|c| c.is_lowercase()).unwrap_or(false)
 }
-
 
 fn check_valid(path: &[&str], to: &str) -> bool {
     if !first_is_lowercase(to) {

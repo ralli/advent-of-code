@@ -4,8 +4,8 @@ use std::io::Read;
 
 use anyhow::Context;
 use nom::bytes::complete::tag;
-use nom::IResult;
 use nom::multi::separated_list1;
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let filename = "./day-6/input.txt";
