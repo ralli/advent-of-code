@@ -115,10 +115,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn part2_works() {
         let result = part2(INPUT);
-        let expected = 307;
+        let expected = 112;
         assert_eq!(result, expected);
     }
 }
