@@ -145,6 +145,8 @@ fn explode(number: &Number) -> (Rc<Number>, bool) {
             Number::Pair(lhs, rhs) if level >= 4 && !exploded => {
                 // the !exploded ensures, that at most only one node per traversal get exploded
                 //
+                // level = 4 actually means nesting level of 3
+                //
                 // explode current node:
                 //   - take the values if the children (which must be Constants)
                 //   - return a Constant(0) Node
