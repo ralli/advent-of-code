@@ -1,12 +1,12 @@
-use std::{fmt, fs};
 use std::fmt::Formatter;
+use std::{fmt, fs};
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{multispace0, newline};
 use nom::combinator::{eof, map};
-use nom::IResult;
 use nom::multi::{many1, separated_list1};
+use nom::IResult;
 
 fn main() -> anyhow::Result<()> {
     let input = fs::read_to_string("input.txt")?;
@@ -25,10 +25,12 @@ fn part1(input: &str) -> anyhow::Result<u64> {
 fn part2(input: &str) -> anyhow::Result<u64> {
     let slopes = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)];
     let (_, grid) = parse_grid(input).map_err(|e| anyhow::Error::msg(e.to_string()))?;
-    let count = slopes.into_iter().map(|(dx, dy)| treecount_for_slope(&grid, dx, dy)).product();
+    let count = slopes
+        .into_iter()
+        .map(|(dx, dy)| treecount_for_slope(&grid, dx, dy))
+        .product();
     Ok(count)
 }
-
 
 fn treecount_for_slope(grid: &Grid, dx: usize, dy: usize) -> u64 {
     let width = grid.width();
@@ -87,7 +89,7 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let ch = match self {
             Value::Empty => '.',
-            Value::Tree => '#'
+            Value::Tree => '#',
         };
         write!(f, "{ch}")
     }
@@ -143,5 +145,4 @@ mod tests {
         assert_eq!(result, 336);
         Ok(())
     }
-
 }

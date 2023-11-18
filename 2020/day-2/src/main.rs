@@ -1,12 +1,12 @@
 use std::fs;
 
 use anyhow::anyhow;
-use nom::{character, IResult};
 use nom::bytes::complete::tag;
 use nom::character::complete::{anychar, multispace0, newline, not_line_ending, space1};
 use nom::combinator::eof;
 use nom::multi::separated_list0;
 use nom::sequence::tuple;
+use nom::{character, IResult};
 
 fn main() -> anyhow::Result<()> {
     let filename = "input.txt";
@@ -108,4 +108,3 @@ mod tests {
     #[test]
     fn test_part1() {}
 }
-

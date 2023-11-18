@@ -4,9 +4,9 @@ use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{line_ending, multispace0, none_of, space1};
 use nom::combinator::{eof, map, recognize};
-use nom::IResult;
 use nom::multi::{many1, separated_list0, separated_list1};
 use nom::sequence::tuple;
+use nom::IResult;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -22,12 +22,18 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(input: &str) -> anyhow::Result<usize> {
     let (_, passports) = passport_file(input).map_err(|e| anyhow::Error::msg(e.to_string()))?;
-    Ok(passports.iter().filter(|passport| passport.is_valid_part1()).count())
+    Ok(passports
+        .iter()
+        .filter(|passport| passport.is_valid_part1())
+        .count())
 }
 
 fn part2(input: &str) -> anyhow::Result<usize> {
     let (_, passports) = passport_file(input).map_err(|e| anyhow::Error::msg(e.to_string()))?;
-    Ok(passports.iter().filter(|passport| passport.is_valid_part2()).count())
+    Ok(passports
+        .iter()
+        .filter(|passport| passport.is_valid_part2())
+        .count())
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -49,13 +55,13 @@ struct Passport {
 
 impl Passport {
     fn is_valid_part1(&self) -> bool {
-        self.contains_field(&PasswordField::BYR) &&
-            self.contains_field(&PasswordField::IYR) &&
-            self.contains_field(&PasswordField::EYR) &&
-            self.contains_field(&PasswordField::HGT) &&
-            self.contains_field(&PasswordField::HCL) &&
-            self.contains_field(&PasswordField::ECL) &&
-            self.contains_field(&PasswordField::PID)
+        self.contains_field(&PasswordField::BYR)
+            && self.contains_field(&PasswordField::IYR)
+            && self.contains_field(&PasswordField::EYR)
+            && self.contains_field(&PasswordField::HGT)
+            && self.contains_field(&PasswordField::HCL)
+            && self.contains_field(&PasswordField::ECL)
+            && self.contains_field(&PasswordField::PID)
         // ignore CID
     }
 
@@ -108,12 +114,16 @@ impl KeyValue {
                     false
                 }
             }
-            PasswordField::HCL => {
-                HGT_RE.is_match(&self.value)
-            }
+            PasswordField::HCL => HGT_RE.is_match(&self.value),
             PasswordField::ECL => {
                 let color = self.value.as_str();
-                color == "amb" || color == "blu" || color == "brn" || color == "gry" || color == "grn" || color == "hzl" || color == "oth"
+                color == "amb"
+                    || color == "blu"
+                    || color == "brn"
+                    || color == "gry"
+                    || color == "grn"
+                    || color == "hzl"
+                    || color == "oth"
             }
             PasswordField::PID => PID_RE.is_match(&self.value),
             PasswordField::CID => true,
@@ -141,7 +151,13 @@ fn passport_kv(input: &str) -> IResult<&str, KeyValue> {
     let (input, key) = password_field(input)?;
     let (input, _) = tag(":")(input)?;
     let (input, value) = recognize(many1(none_of(" \n")))(input)?;
-    Ok((input, KeyValue { key, value: value.to_string() }))
+    Ok((
+        input,
+        KeyValue {
+            key,
+            value: value.to_string(),
+        },
+    ))
 }
 
 fn password_field(input: &str) -> IResult<&str, PasswordField> {
@@ -153,14 +169,7 @@ fn password_field(input: &str) -> IResult<&str, PasswordField> {
     let ecl = map(tag("ecl"), |_| PasswordField::ECL);
     let pid = map(tag("pid"), |_| PasswordField::PID);
     let cid = map(tag("cid"), |_| PasswordField::CID);
-    alt((byr,
-         iyr,
-         eyr,
-         hgt,
-         hcl,
-         ecl,
-         pid,
-         cid, ))(input)
+    alt((byr, iyr, eyr, hgt, hcl, ecl, pid, cid))(input)
 }
 
 #[cfg(test)]
