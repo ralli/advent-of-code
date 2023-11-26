@@ -14,16 +14,27 @@ fn main() -> anyhow::Result<()> {
         fs::read_to_string(filename).with_context(|| format!("cannot read file {filename}"))?;
     let result = part1(&input)?;
     println!("{result}");
+    let result = part2(&input)?;
+    println!("{result}");
     Ok(())
 }
 
 fn part1(input: &str) -> anyhow::Result<i32> {
     let commands = parse_input(input)?;
     let mut state = State::default();
-    for command in commands.into_iter() {
-        state = command.apply(&state);
+    for command in commands.iter() {
+        state = state.apply(command);
     }
     Ok(state.x.abs() + state.y.abs())
+}
+
+fn part2(input: &str) -> anyhow::Result<i32> {
+    let commands = parse_input(input)?;
+    let mut state = State2::default();
+    for command in commands.iter() {
+        state = state.apply(command);
+    }
+    Ok(state.position.x.abs() + state.position.y.abs())
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -31,6 +42,30 @@ struct State {
     direction: Direction,
     x: i32,
     y: i32,
+}
+
+impl State {
+    fn apply(&self, command: &Command) -> State {
+        let next_direction = self.direction.after_command(command);
+        let (next_x, next_y) = match command {
+            Command::North(d) => (self.x, self.y + *d),
+            Command::East(d) => (self.x + *d, self.y),
+            Command::South(d) => (self.x, self.y - *d),
+            Command::West(d) => (self.x - *d, self.y),
+            Command::Forward(d) => match &self.direction {
+                Direction::North => (self.x, self.y + *d),
+                Direction::East => (self.x + *d, self.y),
+                Direction::South => (self.x, self.y - *d),
+                Direction::West => (self.x - *d, self.y),
+            },
+            _ => (self.x, self.y),
+        };
+        State {
+            direction: next_direction,
+            x: next_x,
+            y: next_y,
+        }
+    }
 }
 
 impl Default for State {
@@ -42,6 +77,99 @@ impl Default for State {
         }
     }
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+struct State2 {
+    waypoint: Point,
+    position: Point,
+}
+
+impl State2 {
+    fn apply(&self, command: &Command) -> State2 {
+        let next_waypoint = self.waypoint.after_command(command);
+        let next_position = match command {
+            Command::Forward(d) => Point {
+                x: self.position.x + *d * self.waypoint.x,
+                y: self.position.y + *d * self.waypoint.y,
+            },
+            _ => self.position,
+        };
+        State2 {
+            waypoint: next_waypoint,
+            position: next_position,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Point {
+    fn after_command(&self, command: &Command) -> Point {
+        match command {
+            Command::Left(mut degrees) => {
+                let mut p = *self;
+                while degrees > 0 {
+                    p = p.left();
+                    degrees -= 90;
+                }
+                p
+            }
+            Command::Right(mut degrees) => {
+                let mut p = *self;
+                while degrees > 0 {
+                    p = p.right();
+                    degrees -= 90;
+                }
+                p
+            }
+            Command::North(distance) => Point {
+                x: self.x,
+                y: self.y + *distance,
+            },
+            Command::East(distance) => Point {
+                x: self.x + *distance,
+                y: self.y,
+            },
+            Command::South(distance) => Point {
+                x: self.x,
+                y: self.y - *distance,
+            },
+            Command::West(distance) => Point {
+                x: self.x - *distance,
+                y: self.y,
+            },
+            _ => *self,
+        }
+    }
+
+    fn left(&self) -> Point {
+        Point {
+            x: -self.y,
+            y: self.x,
+        }
+    }
+
+    fn right(&self) -> Point {
+        Point {
+            x: self.y,
+            y: -self.x,
+        }
+    }
+}
+
+impl Default for State2 {
+    fn default() -> Self {
+        State2 {
+            waypoint: Point { x: 10, y: 1 },
+            position: Point { x: 0, y: 0 },
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum Command {
     North(i32),
@@ -51,30 +179,6 @@ enum Command {
     Left(i32),
     Right(i32),
     Forward(i32),
-}
-
-impl Command {
-    fn apply(&self, state: &State) -> State {
-        let next_direction = state.direction.after_command(self);
-        let (next_x, next_y) = match self {
-            Command::North(d) => (state.x, state.y + *d),
-            Command::East(d) => (state.x + *d, state.y),
-            Command::South(d) => (state.x, state.y - *d),
-            Command::West(d) => (state.x - *d, state.y),
-            Command::Forward(d) => match &state.direction {
-                Direction::North => (state.x, state.y + *d),
-                Direction::East => (state.x + *d, state.y),
-                Direction::South => (state.x, state.y - *d),
-                Direction::West => (state.x - *d, state.y),
-            },
-            _ => (state.x, state.y),
-        };
-        State {
-            direction: next_direction,
-            x: next_x,
-            y: next_y,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -166,6 +270,14 @@ F11"#;
     fn part1_works() -> anyhow::Result<()> {
         let result = part1(INPUT)?;
         let expected = 25;
+        assert_eq!(result, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn part2_works() -> anyhow::Result<()> {
+        let result = part2(INPUT)?;
+        let expected = 286;
         assert_eq!(result, expected);
         Ok(())
     }
