@@ -18,6 +18,8 @@ fn main() -> anyhow::Result<()> {
         fs::read_to_string(filename).with_context(|| format!("cannot load file {filename}"))?;
     let result = part1(&input)?;
     println!("{result}");
+    let result = part2(&input)?;
+    println!("{result}");
     Ok(())
 }
 
