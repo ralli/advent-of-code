@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use anyhow::anyhow;
 use nom::bytes::complete::tag;
 use nom::character::complete;
@@ -28,24 +26,26 @@ fn part2(input: &str) -> anyhow::Result<i32> {
 }
 
 fn game(numbers: &[i32], num_rounds: usize) -> i32 {
-    let mut last_turn: BTreeMap<i32, Vec<usize>> =
-        BTreeMap::from_iter(numbers.iter().enumerate().map(|(i, v)| (*v, vec![i + 1])));
-    let mut last_spoken = numbers.last().copied().unwrap_or_default();
-    for turn in numbers.len() + 1..=num_rounds {
-        let visits = last_turn.entry(last_spoken).or_default();
-        let nvisits = visits.len();
-        last_spoken = if nvisits > 1 {
-            visits[nvisits - 1] - visits[nvisits - 2]
-        } else {
+    let mut last_visit: Vec<usize> = vec![0; num_rounds];
+    let mut visited: Vec<bool> = vec![false; num_rounds];
+    let mut last_number = 0;
+    let mut next_number = 0;
+
+    for round in 0..num_rounds {
+        next_number = if round < numbers.len() {
+            numbers[round]
+        } else if !visited[last_number] {
             0
-        } as i32;
-        let visits = last_turn.entry(last_spoken).or_default();
-        visits.push(turn);
-        if visits.len() > 2 {
-            visits.remove(0);
+        } else {
+            (round - last_visit[last_number]) as i32
+        };
+        if round != 0 {
+            last_visit[last_number] = round;
+            visited[last_number] = true;
         }
+        last_number = next_number as usize;
     }
-    last_spoken
+    next_number
 }
 
 fn parse_input(input: &str) -> IResult<&str, Vec<i32>> {
@@ -61,6 +61,15 @@ mod test {
         let input = "0,3,6";
         let result = part1(input)?;
         let expected = 436;
+        assert_eq!(result, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn part2_works() -> anyhow::Result<()> {
+        let input = "0,3,6";
+        let result = part2(input)?;
+        let expected = 175594;
         assert_eq!(result, expected);
         Ok(())
     }
