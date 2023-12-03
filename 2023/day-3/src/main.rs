@@ -51,11 +51,7 @@ impl Grid {
     fn new(input: &str) -> Grid {
         let fields: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
         Grid {
-            width: fields
-                .iter()
-                .next()
-                .map(|field| field.len())
-                .unwrap_or_default(),
+            width: fields.first().map(|field| field.len()).unwrap_or_default(),
             height: fields.len(),
             fields,
         }
