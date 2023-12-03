@@ -34,7 +34,7 @@ fn part2(input: &str) -> anyhow::Result<i32> {
     }
     let result = stars_to_numbers
         .into_iter()
-        .filter(|(pos, numbers)| numbers.len() == 2)
+        .filter(|(_, numbers)| numbers.len() == 2)
         .map(|(_, numbers)| numbers.into_iter().product::<i32>())
         .sum();
     Ok(result)
@@ -44,50 +44,33 @@ fn part2(input: &str) -> anyhow::Result<i32> {
 struct Grid {
     width: usize,
     height: usize,
-    fields: BTreeMap<Point, char>,
+    fields: Vec<Vec<char>>,
 }
 
 impl Grid {
     fn new(input: &str) -> Grid {
-        let lines: Vec<_> = input.lines().collect();
-        let height = lines.len();
-        let width = lines
-            .iter()
-            .next()
-            .map(|line| line.len())
-            .unwrap_or_default();
-        let field_iter = lines.iter().enumerate().flat_map(|(row, line)| {
-            line.chars()
-                .enumerate()
-                .map(|(col, c)| {
-                    (
-                        Point {
-                            row: row as i32,
-                            col: col as i32,
-                        },
-                        c,
-                    )
-                })
-                .collect::<Vec<(Point, char)>>()
-        });
-        let mut fields = BTreeMap::from_iter(field_iter);
+        let fields: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
         Grid {
-            width,
-            height,
+            width: fields
+                .iter()
+                .next()
+                .map(|field| field.len())
+                .unwrap_or_default(),
+            height: fields.len(),
             fields,
         }
     }
 
     fn scan_numbers(&self) -> Vec<i32> {
         (0..self.width)
-            .cartesian_product((0..self.height))
+            .cartesian_product(0..self.height)
             .filter_map(|(row, col)| self.scan_number(row as i32, col as i32))
             .collect()
     }
 
     fn scan_numbers_and_positions(&self) -> Vec<NumberAndPositions> {
         (0..self.width)
-            .cartesian_product((0..self.height))
+            .cartesian_product(0..self.height)
             .filter_map(|(row, col)| self.scan_number_and_positions(row as i32, col as i32))
             .collect()
     }
@@ -145,36 +128,19 @@ impl Grid {
     }
 
     fn get(&self, row: i32, col: i32) -> char {
-        *self.fields.get(&Point { row, col }).unwrap_or(&'.')
+        if row < 0 || row as usize >= self.height || col < 0 || col as usize >= self.width {
+            return '.';
+        }
+        self.fields[row as usize][col as usize]
     }
 
     fn has_adjacent_symbol(&self, row: i32, col: i32) -> bool {
-        static DELTAS: [(i32, i32); 8] = [
-            (-1, -1),
-            (-1, 0),
-            (-1, 1),
-            (0, -1),
-            (0, 1),
-            (1, -1),
-            (1, 0),
-            (1, 1),
-        ];
         DELTAS
             .iter()
             .any(|(dr, dc)| self.is_symbol(row + dr, col + dc))
     }
 
     fn adjacent_stars(&self, row: i32, col: i32) -> BTreeSet<Point> {
-        static DELTAS: [(i32, i32); 8] = [
-            (-1, -1),
-            (-1, 0),
-            (-1, 1),
-            (0, -1),
-            (0, 1),
-            (1, -1),
-            (1, 0),
-            (1, 1),
-        ];
         let mut result = BTreeSet::new();
         DELTAS.iter().for_each(|(dr, dc)| {
             if self.is_star(row + dr, col + dc) {
@@ -188,12 +154,12 @@ impl Grid {
     }
 
     fn is_digit(&self, row: i32, col: i32) -> bool {
-        self.get(row, col).is_digit(10)
+        self.get(row, col).is_ascii_digit()
     }
 
     fn is_symbol(&self, row: i32, col: i32) -> bool {
         let c = self.get(row, col);
-        !(c == '.' || c.is_digit(10))
+        !(c == '.' || c.is_ascii_digit())
     }
 
     fn is_star(&self, row: i32, col: i32) -> bool {
@@ -217,6 +183,16 @@ impl fmt::Display for Grid {
         Ok(())
     }
 }
+static DELTAS: [(i32, i32); 8] = [
+    (-1, -1),
+    (-1, 0),
+    (-1, 1),
+    (0, -1),
+    (0, 1),
+    (1, -1),
+    (1, 0),
+    (1, 1),
+];
 
 #[derive(Debug)]
 struct NumberAndPositions {
