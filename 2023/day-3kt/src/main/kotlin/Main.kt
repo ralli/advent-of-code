@@ -111,7 +111,7 @@ data class Grid(val fields: List<CharArray>) {
 
     private fun isStar(row: Int, col: Int): Boolean {
         val c = get(row, col)
-        return !(c == '.' || c.isDigit())
+        return c == '*'
     }
 
     fun width(): Int {
