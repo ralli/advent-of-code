@@ -48,13 +48,16 @@ struct SeedCategoryMappings {
 }
 
 impl SeedCategoryMappings {
-    fn range_location_value(&self, from: u64, to: u64) -> u64 {
-        let value = self.category_mappings.first().unwrap().ranges_value(from, to);
-        self.category_mappings.iter().skip(1).fold(value, |v, m| m.range_value(v))
-    }
-
     fn location_value(&self, value: u64) -> u64 {
-        self.category_mappings.iter().fold(value, |v, m| m.range_value(v))
+        println!("value: {value}");
+        let result = self.category_mappings.iter().fold(value, |v, m| {
+            let result = m.range_value(v);
+            println!("{} {} {} {}", v, result, m.source, m.destination);
+            result
+        });
+        println!("result: {result}");
+        println!("---");
+        result
     }
 }
 
@@ -66,10 +69,6 @@ struct CategoryMapping {
 }
 
 impl CategoryMapping {
-    fn ranges_value(&self, from: u64, to: u64) -> u64 {
-        self.mappings.iter().find_map(|m| m.ranges_value(from, to)).unwrap()
-    }
-
     fn range_value(&self, value: u64) -> u64 {
         self.mappings.iter().find_map(|m| m.range_value(value)).unwrap_or(value)
     }
@@ -83,22 +82,9 @@ struct Mapping {
 }
 
 impl Mapping {
-    fn ranges_value(&self, from: u64, to: u64) -> Option<u64> {
-        let bla = self.source_range_start..self.source_range_start + self.range_length;
-        let value = if to >= bla.start && from < bla.end {
-            if from < bla.start {
-                Some(bla.start)
-            } else {
-                Some(from)
-            }
-        } else {
-            None
-        };
-        value.and_then(|v| self.range_value(v))
-    }
-
     fn range_value(&self, value: u64) -> Option<u64> {
         if (self.source_range_start..self.source_range_start + self.range_length).contains(&value) {
+            println!("{}-{} {}", self.source_range_start, self.source_range_start + self.range_length, self.destination_range_start + (value - self.source_range_start));
             return Some(self.destination_range_start + (value - self.source_range_start));
         } else {
             None
@@ -107,10 +93,9 @@ impl Mapping {
 }
 
 fn parse_input(input: &str) -> anyhow::Result<SeedCategoryMappings> {
-    let (input, category_mappings) = seed_category_mappings(input).map_err(|e| anyhow!(e.to_string()))?;
+    let (_, category_mappings) = seed_category_mappings(input).map_err(|e| anyhow!(e.to_string()))?;
     Ok(category_mappings)
 }
-
 
 fn seed_category_mappings(input: &str) -> IResult<&str, SeedCategoryMappings> {
     let (input, seeds) = delimited(preceded(tag("seeds:"), space1), separated_list0(space1, complete::u64), many1(line_ending))(input)?;
@@ -208,13 +193,5 @@ humidity-to-location map:
         assert_eq!(m.range_value(99), Some(51));
         assert_eq!(m.range_value(100), None);
         assert_eq!(m.range_value(97), None);
-    }
-
-    #[test]
-    fn ranges_value_works() {
-        let m = Mapping { destination_range_start: 52, source_range_start: 50, range_length: 48 };
-        let from = 79;
-        let to = 79 + 14 - 1;
-        assert_eq!(m.ranges_value(from, to), Some(84));
     }
 }
