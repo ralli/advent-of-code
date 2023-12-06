@@ -4,7 +4,6 @@ use anyhow::{anyhow, Context};
 use nom::bytes::complete::tag;
 use nom::character::complete;
 use nom::character::complete::{line_ending, space1};
-use nom::combinator::complete;
 use nom::IResult;
 use nom::multi::separated_list1;
 use nom::sequence::{preceded, terminated};
