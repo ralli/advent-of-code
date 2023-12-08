@@ -67,8 +67,8 @@ struct Almanach {
 impl Almanach {
     fn location_value(&self, value: i64) -> i64 {
         let result = self.category_mappings.iter().fold(value, |v, m| {
-            let result = m.range_value(v);
-            result
+            
+            m.range_value(v)
         });
         result
     }

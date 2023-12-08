@@ -44,7 +44,7 @@ fn part2(input: &str) -> anyhow::Result<usize> {
 fn number_of_cards(cards: &[Card]) -> usize {
     let mut memo: Vec<usize> = vec![1; cards.len() + 1];
 
-    for idx in (1..=cards.len()) {
+    for idx in 1..=cards.len() {
         let current = memo[idx];
         let matching_cards: Vec<_> = cards[idx - 1]
             .numbers
@@ -66,7 +66,7 @@ fn pow2(n: u32) -> u32 {
     }
     let mut result = 1;
     let mut x = n - 1;
-    while (x > 0) {
+    while x > 0 {
         result *= 2;
         x -= 1;
     }

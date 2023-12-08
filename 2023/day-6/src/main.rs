@@ -51,7 +51,7 @@ fn parse_races(input: &str) -> IResult<&str, Vec<Race>> {
     let (input, times) = preceded(terminated(tag("Time:"), space1), separated_list1(space1, complete::i64))(input)?;
     let (input, _) = line_ending(input)?;
     let (input, distances) = preceded(terminated(tag("Distance:"), space1), separated_list1(space1, complete::i64))(input)?;
-    let races = times.into_iter().zip(distances.into_iter()).map(|(time, distance)| Race { time, distance }).collect();
+    let races = times.into_iter().zip(distances).map(|(time, distance)| Race { time, distance }).collect();
     Ok((input, races))
 }
 

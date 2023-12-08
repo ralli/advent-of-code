@@ -16,7 +16,7 @@ fn main() -> anyhow::Result<()> {
 fn part1(input: &str) -> anyhow::Result<i32> {
     let result: Result<Vec<i32>, _> = input
         .lines()
-        .map(|line| line.chars().filter(|c| c.is_digit(10)).collect())
+        .map(|line| line.chars().filter(|c| c.is_ascii_digit()).collect())
         .map(|line: Vec<char>| format!("{}{}", line.first().unwrap_or(&'0'), line.last().unwrap_or(&'0')))
         .map(|s: String| s.parse())
         .collect();
@@ -26,7 +26,7 @@ fn part1(input: &str) -> anyhow::Result<i32> {
 
 fn part2(input: &str) -> anyhow::Result<u32> {
     let lines = parse_input(input);
-    let result = lines.into_iter().map(|(s, line)| {
+    let result = lines.into_iter().map(|(_s, line)| {
         let result = line.first().copied().unwrap() * 10 + line.last().copied().unwrap();
         result
     })
@@ -58,7 +58,7 @@ fn parse_digit(input: &str) -> Option<u32> {
         // ("zero", 0),
     ]);
 
-    if let Some(true) = input.chars().next().map(|c| c.is_digit(10)) {
+    if let Some(true) = input.chars().next().map(|c| c.is_ascii_digit()) {
         return Some(input.chars().next().unwrap() as u32 - '0' as u32);
     }
 
