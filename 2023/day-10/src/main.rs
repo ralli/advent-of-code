@@ -24,14 +24,13 @@ fn part1(input: &str) -> anyhow::Result<isize> {
     let mut q: VecDeque<(isize, isize, isize, isize, isize)> =
         VecDeque::from([(start_position.0, start_position.1, -1, -1, 0)]);
     let mut visited: BTreeSet<(isize, isize, isize, isize)> = BTreeSet::new();
+
     while let Some((row, col, from_row, from_col, distance)) = q.pop_front() {
-        let current_pipe = grid.pipes[row as usize][col as usize];
         let next_moves: Vec<(isize, isize)> = grid
             .valid_moves(row, col)
             .into_iter()
             .filter(|(r, c)| *r != from_row || *c != from_col)
             .collect();
-        // println!("{} {} {} {} {:?}", row, col, from_row, from_col, next_moves);
         for (next_row, next_col) in next_moves {
             if visited.insert((row, col, next_row, next_col)) {
                 q.push_back((next_row, next_col, row, col, distance + 1));
@@ -42,27 +41,13 @@ fn part1(input: &str) -> anyhow::Result<isize> {
             }
         }
     }
-    // println!("{distances:?}",);
-    // println!("{grid}");
-    // println!();
-    //
-    // for row in 0..grid.height as usize {
-    //     for col in (0..grid.width as usize) {
-    //         if let Some(v) = distances.get(&(row as isize, col as isize)) {
-    //             let m = v.iter().min().copied().unwrap_or_default();
-    //             print!("{m:2}");
-    //         } else {
-    //             print!(" .");
-    //         }
-    //     }
-    //     println!();
-    // }
 
     let result = distances
         .values()
         .map(|v| v.iter().min().copied().unwrap_or_default())
         .max()
         .unwrap_or_default();
+
     Ok(result)
 }
 
@@ -71,8 +56,8 @@ fn part2(input: &str) -> anyhow::Result<isize> {
     let start_position = grid.find_start_pos();
     let mut q: VecDeque<(isize, isize, isize, isize, Vec<(isize, isize)>)> =
         VecDeque::from([(start_position.0, start_position.1, -1, -1, Vec::new())]);
-    // let mut visited: BTreeSet<(isize, isize, isize, isize)> = BTreeSet::new();
     let mut result = Vec::new();
+
     while let Some((row, col, from_row, from_col, path)) = q.pop_front() {
         let next_path: Vec<_> = path.iter().copied().chain(iter::once((row, col))).collect();
         let next_moves: Vec<(isize, isize)> = grid
@@ -91,60 +76,46 @@ fn part2(input: &str) -> anyhow::Result<isize> {
         }
     }
 
-    let mut positions = BTreeSet::from_iter(result.into_iter());
+    let positions = BTreeSet::from_iter(result);
 
     let mut result = 0;
-    let mut found = BTreeSet::new();
 
     for row in (0..grid.height as usize) {
         let mut even_odd = 0;
         let mut last = PipeType::Empty;
-        for col in (0..grid.width as usize).rev() {
+        for col in (0..grid.width as usize) {
             let current = grid.pipes[row][col];
             if !positions.contains(&(row as isize, col as isize)) {
                 if even_odd % 2 == 1 {
                     result += 1;
-                    found.insert((row as isize, col as isize));
                 }
             } else {
                 match (last, current) {
-                    (PipeType::SouthToWest, PipeType::SouthToEast) => {
+                    (PipeType::SouthToEast, PipeType::SouthToWest) => {
                         even_odd += 1;
                     }
-                    (PipeType::SouthToWest, PipeType::NorthToEast) => {
+                    (PipeType::NorthToEast, PipeType::SouthToWest) => {
                         // ignore
                     }
-                    (PipeType::NorthToWest, PipeType::NorthToEast) => {
+                    (PipeType::NorthToEast, PipeType::NorthToWest) => {
                         even_odd += 1;
                     }
-                    (PipeType::NorthToWest, PipeType::SouthToEast) => {
+                    (PipeType::SouthToEast, PipeType::NorthToWest) => {
+                        // ignore
+                    }
+                    (_, PipeType::Horizontal) => {
                         // ignore
                     }
                     _ => {
-                        if current != PipeType::Horizontal {
-                            last = current;
-                            even_odd += 1;
-                        }
+                        last = current;
+                        even_odd += 1;
                     }
                 };
             }
         }
     }
-    // for row in (0..grid.height as usize) {
-    //     for col in 0..grid.width as usize {
-    //         if found.contains(&(row as isize, col as isize)) {
-    //             print!("I");
-    //             // print!("{}", grid.pipes[row][col])
-    //         } else if positions.contains(&(row as isize, col as isize)) {
-    //             print!("{}", grid.pipes[row][col])
-    //         } else {
-    //             print!(".");
-    //         }
-    //     }
-    //     println!();
-    // }
-    // println!("{found:?}");
-    Ok(found.len() as isize)
+
+    Ok(result)
 }
 
 fn parse_input(input: &str) -> anyhow::Result<Grid> {
@@ -160,7 +131,7 @@ fn parse_input(input: &str) -> anyhow::Result<Grid> {
 }
 
 fn parse_line(input: &str) -> anyhow::Result<Vec<PipeType>> {
-    input.chars().map(|c| PipeType::try_from(c)).collect()
+    input.chars().map(PipeType::try_from).collect()
 }
 
 #[derive(Debug)]
@@ -207,6 +178,7 @@ impl Grid {
         })
     }
 }
+
 impl fmt::Display for Grid {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         for row in 0..self.height as usize {
@@ -386,10 +358,29 @@ LJ.LJ"#;
 .L--J.L--J.
 ..........."#;
 
+    static INPUT4: &str = r#".F----7F7F7F7F-7....
+.|F--7||||||||FJ....
+.||.FJ||||||||L7....
+FJL7L7LJLJ||LJ.L-7..
+L--J.L7...LJS7F-7L7.
+....F-J..F7FJ|L7L7L7
+....L7.F7||L7|.L7L7|
+.....|FJLJ|FJ|F7|.LJ
+....FJL-7.||.||||...
+....L---J.LJ.LJLJ..."#;
+
     #[test]
-    fn part2_works() -> anyhow::Result<()> {
+    fn part2_works_on_input3() -> anyhow::Result<()> {
         let result = part2(INPUT3)?;
         let expected = 4;
+        assert_eq!(result, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn part2_works_on_input4() -> anyhow::Result<()> {
+        let result = part2(INPUT4)?;
+        let expected = 8;
         assert_eq!(result, expected);
         Ok(())
     }
