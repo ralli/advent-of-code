@@ -81,36 +81,22 @@ fn part2(input: &str) -> anyhow::Result<isize> {
     let mut result = 0;
 
     for row in (0..grid.height as usize) {
-        let mut even_odd = 0;
-        let mut last = PipeType::Empty;
+        let mut even_odd = false;
         for col in (0..grid.width as usize) {
             let current = grid.pipes[row][col];
-            if !positions.contains(&(row as isize, col as isize)) {
-                if even_odd % 2 == 1 {
-                    result += 1;
+            if positions.contains(&(row as isize, col as isize)) {
+                /*
+                 * Since we ar scanning from top to bottom, we only
+                 * count Pipes which can go south as changes (V=|, SW=7, SE=F)
+                 */
+                if current == PipeType::Vertical
+                    || current == PipeType::SouthToWest
+                    || current == PipeType::SouthToEast
+                {
+                    even_odd = !even_odd;
                 }
-            } else {
-                match (last, current) {
-                    (PipeType::SouthToEast, PipeType::SouthToWest) => {
-                        even_odd += 1;
-                    }
-                    (PipeType::NorthToEast, PipeType::SouthToWest) => {
-                        // ignore
-                    }
-                    (PipeType::NorthToEast, PipeType::NorthToWest) => {
-                        even_odd += 1;
-                    }
-                    (PipeType::SouthToEast, PipeType::NorthToWest) => {
-                        // ignore
-                    }
-                    (_, PipeType::Horizontal) => {
-                        // ignore
-                    }
-                    _ => {
-                        last = current;
-                        even_odd += 1;
-                    }
-                };
+            } else if even_odd {
+                result += 1;
             }
         }
     }
