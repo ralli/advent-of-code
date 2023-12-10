@@ -86,8 +86,9 @@ fn part2(input: &str) -> anyhow::Result<isize> {
             let current = grid.pipes[row][col];
             if positions.contains(&(row as isize, col as isize)) {
                 /*
-                 * Since we ar scanning from top to bottom, we only
-                 * count Pipes which can go south as changes (V=|, SW=7, SE=F)
+                 * Since we are scanning from top to bottom, we only
+                 * count Pipes which can go south as changes (V=|, SW=7, SE=F).
+                 * We dismiss all J, -, L because a horizontal ray moved slightly more south will miss the Pipes.
                  */
                 if current == PipeType::Vertical
                     || current == PipeType::SouthToWest
