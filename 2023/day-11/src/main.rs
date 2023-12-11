@@ -1,6 +1,7 @@
 use std::fs;
 use std::str::FromStr;
 use anyhow::Context;
+use itertools::Itertools;
 
 fn main() -> anyhow::Result<()> {
     let filename = "day-11.txt";
@@ -76,14 +77,7 @@ impl FromStr for Grid {
         let width = pixels.first().map(|line| line.len()).unwrap_or_default();
         let empty_rows: Vec<usize> = (0..height).filter(|&row| (0..width).all(|col| pixels[row][col] == '.')).collect();
         let empty_cols: Vec<usize> = (0..width).filter(|&col| (0..height).all(|row| pixels[row][col] == '.')).collect();
-        let mut positions: Vec<(usize, usize)> = Vec::new();
-        for row in 0..height {
-            for col in 0..width {
-                if pixels[row][col] == '#' {
-                    positions.push((row, col));
-                }
-            }
-        }
+        let positions = (0..height).cartesian_product(0..width).filter(|&(row, col)| pixels[row][col] == '#').collect();
         Ok(Self {
             positions,
             empty_rows,
@@ -118,7 +112,7 @@ mod tests {
     #[test]
     fn sum_of_distances_with_an_expansion() -> anyhow::Result<()> {
         let grid: Grid = INPUT.parse()?;
-        let result = grid.sum_of_distances(10-1);
+        let result = grid.sum_of_distances(10 - 1);
         let expected = 1030;
         assert_eq!(result, expected);
         Ok(())
