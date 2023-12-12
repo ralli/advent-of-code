@@ -98,14 +98,12 @@ fn count_arrangements(spring_states: &[SpringState], group_counts: &[i64]) -> i6
         let result = match first_state {
             SpringState::Operational => {
                 if current_count == first_count {
-                    let result = count_arrangements_memo(&spring_states[1..], 0, &group_counts[1..], memo);
-                    result
+                    count_arrangements_memo(&spring_states[1..], 0, &group_counts[1..], memo)
                 } else if current_count > 0 {
                     // println!("FALSE!");
                     0
                 } else {
-                    let result = count_arrangements_memo(&spring_states[1..], 0, group_counts, memo);
-                    result
+                    count_arrangements_memo(&spring_states[1..], 0, group_counts, memo)
                 }
             }
             SpringState::Damaged => {
@@ -115,14 +113,12 @@ fn count_arrangements(spring_states: &[SpringState], group_counts: &[i64]) -> i6
             SpringState::Unknown => {
                 let damaged = count_arrangements_memo(&spring_states[1..], current_count + 1, group_counts, memo);
                 let operational = if current_count == first_count {
-                    let result = count_arrangements_memo(&spring_states[1..], 0, &group_counts[1..], memo);
-                    result
+                    count_arrangements_memo(&spring_states[1..], 0, &group_counts[1..], memo)
                 } else if current_count > 0 {
                     // println!("FALSE!");damaged
                     0
                 } else {
-                    let result = count_arrangements_memo(&spring_states[1..], 0, group_counts, memo);
-                    result
+                    count_arrangements_memo(&spring_states[1..], 0, group_counts, memo)
                 };
                 damaged + operational
             }
