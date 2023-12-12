@@ -8,6 +8,7 @@ use nom::character::complete::{char, line_ending, space1};
 use nom::IResult;
 use nom::multi::{many1, separated_list0, separated_list1};
 use nom::Parser;
+use rayon::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let filename = "day-12.txt";
@@ -24,13 +25,13 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(input: &str) -> anyhow::Result<i64> {
     let records = parse_input(input)?;
-    let result = records.iter().map(|r| count_arrangements(&r.spring_states, &r.group_counts)).sum();
+    let result = records.into_par_iter().map(|r| count_arrangements(&r.spring_states, &r.group_counts)).sum();
     Ok(result)
 }
 
 fn part2(input: &str) -> anyhow::Result<i64> {
     let records = parse_input(input)?;
-    let result = records.iter().map(|r| count_arrangements2(&r.spring_states, &r.group_counts)).sum();
+    let result = records.into_par_iter().map(|r| count_arrangements2(&r.spring_states, &r.group_counts)).sum();
     Ok(result)
 }
 
