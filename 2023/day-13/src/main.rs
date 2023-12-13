@@ -97,13 +97,7 @@ impl Grid {
     }
 
     fn flip(&mut self, row: usize, col: usize) {
-        let c = self.cells[row][col];
-        let n = if c == CellType::Ash {
-            CellType::Rock
-        } else {
-            CellType::Ash
-        };
-        self.cells[row][col] = n;
+        self.cells[row][col] = self.cells[row][col].flipped();
     }
 
     fn find_horizontal_fold(&self) -> Option<usize> {
@@ -117,22 +111,11 @@ impl Grid {
     }
 
     fn find_horizontal_fold_at_row(&self, row: usize) -> Option<usize> {
-        let mut i1 = row;
-        let mut i2 = i1 + 1;
-
-        if self.cells[i1] != self.cells[i2] {
-            return None;
-        }
-
-        while i1 > 0 && i2 < self.height - 1 {
-            if self.cells[i1 - 1] != self.cells[i2 + 1] {
-                return None;
-            }
-            i1 -= 1;
-            i2 += 1;
-        }
-
-        Some(row + 1)
+        (0..=row)
+            .rev()
+            .zip((row + 1)..self.height)
+            .all(|(i, j)| self.cells[i] == self.cells[j])
+            .then_some(row + 1)
     }
 
     fn rotated(&self) -> Grid {
@@ -171,6 +154,15 @@ impl fmt::Display for Grid {
 enum CellType {
     Ash,
     Rock,
+}
+
+impl CellType {
+    fn flipped(&self) -> Self {
+        match self {
+            CellType::Ash => CellType::Rock,
+            CellType::Rock => CellType::Ash,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
