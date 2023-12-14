@@ -30,7 +30,7 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     static DIRECTIONS: [Direction; 4] = [Direction::NORTH, Direction::WEST, Direction::SOUTH, Direction::EAST];
     let mut dir = DIRECTIONS.iter().cycle();
     let num_steps = 1_000_000_000;
-    let mut bla : HashMap<Grid, Vec<i32>> = HashMap::new();
+    let mut visited: HashMap<Grid, Vec<i32>> = HashMap::new();
     for cycle in 1..=num_steps {
         for _i in 0..4 {
             let d = dir.next().unwrap();
@@ -42,20 +42,14 @@ fn part2(input: &str) -> anyhow::Result<usize> {
             };
         }
         let key = grid.clone();
-        let e = bla.entry(key).or_default();
+        let e = visited.entry(key).or_default();
         e.push(cycle);
         if e.len() >= 2 {
             let delta = e[1] - e[0];
             if (num_steps - e[0]) % delta == 0 {
                 break;
             }
-
         }
-        // let load = grid.total_load();
-        // if load == 64 {
-        //     println!("{} {}", cycle, load);
-        //     println!("{}", grid);
-        // }
     }
     let result = grid.total_load();
     Ok(result)
