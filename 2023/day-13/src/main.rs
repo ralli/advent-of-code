@@ -1,13 +1,12 @@
-use std::{fmt, fs};
 use std::fmt::Formatter;
+use std::{fmt, fs};
 
 use anyhow::{anyhow, Context};
 use nom::branch::alt;
 use nom::character::complete::{char, line_ending};
-use nom::IResult;
 use nom::multi::{many1, separated_list0, separated_list1};
+use nom::IResult;
 use nom::Parser;
-
 
 fn main() -> anyhow::Result<()> {
     let filename = "day-13.txt";
@@ -24,31 +23,31 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(input: &str) -> anyhow::Result<usize> {
     let grids = parse_input(input)?;
-    let mut col_reflections: Vec<usize> = Vec::new();
-    let mut row_reflections: Vec<usize> = Vec::new();
-    for g in grids.iter() {
-        if let Some(c) = g.col_reflection() {
-            col_reflections.push(c)
-        } else {
-            let bla = g.row_reflection();
-            if let Some(bla) = bla {
-                row_reflections.push(bla);
-            }
-        }
-    }
-    // assert_eq!(col_reflections.len() + row_reflections.len(), grids.len());
-    println!("{col_reflections:?} {row_reflections:?}");
-    let ncol: usize = col_reflections.iter().sum();
-    let nrow: usize = row_reflections.iter().sum::<usize>() * 100;
-    // 7705 too low
-    Ok(ncol + nrow)
+    let folds: Vec<_> = grids.iter().map(|g| g.detect_fold()).collect();
+    let result = folds
+        .iter()
+        .map(|fold| match fold {
+            Fold::Vertical(n) => *n,
+            Fold::Horizontal(n) => 100 * *n,
+        })
+        .sum();
+    Ok(result)
 }
 
-fn part2(input: &str) -> anyhow::Result<i64> {
-    Ok(0)
+fn part2(input: &str) -> anyhow::Result<usize> {
+    let grids = parse_input(input)?;
+    let folds: Vec<_> = grids.iter().map(|g| g.detect_smudge_fold()).collect();
+    let result = folds
+        .iter()
+        .map(|fold| match fold {
+            Fold::Vertical(n) => *n,
+            Fold::Horizontal(n) => 100 * *n,
+        })
+        .sum();
+    Ok(result)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Grid {
     cells: Vec<Vec<CellType>>,
     height: usize,
@@ -56,65 +55,82 @@ struct Grid {
 }
 
 impl Grid {
-    fn col_reflection(&self) -> Option<usize> {
-        if self.width < 2 {
-            return None;
-        }
-        (0..(self.width - 2)).find(|&col|
-            self.reflects_at_col(col)
-        ).map(|i| i + 1)
+    fn detect_fold(&self) -> Fold {
+        self.rotated()
+            .find_horizontal_fold()
+            .map(Fold::Vertical)
+            .or_else(|| self.find_horizontal_fold().map(Fold::Horizontal))
+            .unwrap()
     }
 
-    fn row_reflection(&self) -> Option<usize> {
-        if self.height == 0 {
-            return None;
-        }
-        (0..(self.height - 2)).find(|&row| {
-            let result = self.reflects_at_row(row);
-            println!("{row} {result}");
-            result
-        }
-        ).map(|i| i + 1)
+    fn detect_fold_opt(&self) -> Vec<Fold> {
+        self.rotated()
+            .find_horizontal_folds()
+            .into_iter()
+            .map(Fold::Vertical)
+            .chain(
+                self.find_horizontal_folds()
+                    .into_iter()
+                    .map(Fold::Horizontal),
+            )
+            .collect()
     }
 
-    fn reflects_at_col(&self, start_col: usize) -> bool {
-        (0..self.height).all(|row| self.reflects_row_at_col(row, start_col))
-    }
-
-    fn reflects_row_at_col(&self, row: usize, start_col: usize) -> bool {
-        let mut i1 = start_col;
-        let mut i2 = start_col + 1;
-        while i2 < self.width {
-            if self.cells[row][i1] != self.cells[row][i2] {
-                return false;
+    fn detect_smudge_fold(&self) -> Fold {
+        let mut g = self.clone();
+        let old = self.detect_fold();
+        for row in 0..self.height {
+            for col in 0..self.width {
+                g.flip(row, col);
+                let maybes: Vec<Fold> = g
+                    .detect_fold_opt()
+                    .into_iter()
+                    .filter(|n| *n != old)
+                    .collect();
+                g.flip(row, col);
+                if !maybes.is_empty() {
+                    return maybes[0];
+                }
             }
-            if i1 == 0 {
-                break;
-            }
-            i1 -= 1;
-            i2 += 1;
         }
-        true
+        unreachable!();
     }
 
-    fn reflects_at_row(&self, start_row: usize) -> bool {
-        (0..self.width).all(|col| dbg!(self.reflects_col_at_row(col, start_row)))
+    fn flip(&mut self, row: usize, col: usize) {
+        self.cells[row][col] = self.cells[row][col].flipped();
     }
 
-    fn reflects_col_at_row(&self, col: usize, start_row: usize) -> bool {
-        let mut i1 = start_row;
-        let mut i2 = start_row + 1;
-        while i2 < self.height {
-            if self.cells[i1][col] != self.cells[i2][col] {
-                return false;
-            }
-            if i1 == 0 {
-                break;
-            }
-            i1 -= 1;
-            i2 += 1;
+    fn find_horizontal_fold(&self) -> Option<usize> {
+        (0..self.height - 1).find_map(|row| self.find_horizontal_fold_at_row(row))
+    }
+
+    fn find_horizontal_folds(&self) -> Vec<usize> {
+        (0..self.height - 1)
+            .filter_map(|row| self.find_horizontal_fold_at_row(row))
+            .collect()
+    }
+
+    fn find_horizontal_fold_at_row(&self, row: usize) -> Option<usize> {
+        (0..=row)
+            .rev()
+            .zip((row + 1)..self.height)
+            .all(|(i, j)| self.cells[i] == self.cells[j])
+            .then_some(row + 1)
+    }
+
+    fn rotated(&self) -> Grid {
+        let cells: Vec<Vec<CellType>> = (0..self.width)
+            .map(|col| {
+                (0..self.height)
+                    .map(|row| self.cells[row][col])
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        Grid {
+            cells,
+            height: self.width,
+            width: self.height,
         }
-        true
     }
 }
 
@@ -140,6 +156,21 @@ enum CellType {
     Rock,
 }
 
+impl CellType {
+    fn flipped(&self) -> Self {
+        match self {
+            CellType::Ash => CellType::Rock,
+            CellType::Rock => CellType::Ash,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum Fold {
+    Horizontal(usize),
+    Vertical(usize),
+}
+
 fn parse_input(input: &str) -> anyhow::Result<Vec<Grid>> {
     let (_, grids) = parse_grids(input).map_err(|e| anyhow!(e.to_string()))?;
     Ok(grids)
@@ -154,7 +185,14 @@ fn parse_grid(input: &str) -> IResult<&str, Grid> {
     let (input, cells) = separated_list1(line_ending, row)(input)?;
     let height = cells.len();
     let width = cells.first().map(|r| r.len()).unwrap_or_default();
-    Ok((input, Grid { cells, height, width }))
+    Ok((
+        input,
+        Grid {
+            cells,
+            height,
+            width,
+        },
+    ))
 }
 
 fn parse_cell_type(input: &str) -> IResult<&str, CellType> {
@@ -183,15 +221,13 @@ mod tests {
 ..##..###
 #....#..#"#;
 
-
     #[test]
     fn test1() -> anyhow::Result<()> {
         let grids = parse_input(INPUT)?;
-        let result = grids[0].col_reflection();
-        let expected = Some(1);
-        assert_eq!(result, expected);
-        let result = grids[0].row_reflection();
-        let expected = None;
+        println!("{}", grids[0].rotated());
+        let result = grids[0].detect_fold();
+
+        let expected = Fold::Vertical(5);
         assert_eq!(result, expected);
         Ok(())
     }
@@ -199,11 +235,9 @@ mod tests {
     #[test]
     fn test2() -> anyhow::Result<()> {
         let grids = parse_input(INPUT)?;
-        let result = grids[1].col_reflection();
-        let expected = None;
-        assert_eq!(result, expected);
-        let result = grids[1].row_reflection();
-        let expected = Some(1);
+        let result = grids[0].detect_smudge_fold();
+
+        let expected = Fold::Horizontal(3);
         assert_eq!(result, expected);
         Ok(())
     }
@@ -219,33 +253,8 @@ mod tests {
     #[test]
     fn part2_works() -> anyhow::Result<()> {
         let result = part2(INPUT)?;
-        let expected = 525152;
+        let expected = 400;
         assert_eq!(result, expected);
-        Ok(())
-    }
-
-    #[test]
-    fn test_10() -> anyhow::Result<()> {
-        let input = r#"#.##.######.##.##
-###...####...####
-....##.##.##.....
-#..#.#....#.#..##
-.....##..##......
-#.#.###..###.#.##
-.##.#.####.#.#...
-.#..#......#..#..
-.####.####.####..
-###...####...####
-#.##........##.##
-.#....#..#....#..
-..###.####.###...
-"#;
-        let (_, grid) = parse_grid(input).map_err(|e| anyhow!(e.to_string()))?;
-        dbg!(grid.reflects_col_at_row(7,1));
-      //  dbg!(grid.reflects_at_row(0));
-        // let bla = grid.row_reflection();
-        // let expected = Some(8);
-        // assert_eq!(bla, expected);
         Ok(())
     }
 }
