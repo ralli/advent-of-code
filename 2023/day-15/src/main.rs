@@ -74,6 +74,7 @@ fn print_boxes(boxes: &[Box]) {
         }
     }
 }
+
 fn hash(s: &str) -> usize {
     s.bytes().fold(0usize, |n, c| {
         ((n + c as usize) * 17) % 256
@@ -139,7 +140,7 @@ mod tests {
 
     #[test]
     fn test1() -> anyhow::Result<()> {
-        let (input, strings) = parse_groups(INPUT).map_err(|e| anyhow!(e))?;
+        let (_, strings) = parse_groups(INPUT).map_err(|e| anyhow!(e))?;
         println!("{strings:?}");
         Ok(())
     }
