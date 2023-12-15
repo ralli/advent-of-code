@@ -1,6 +1,5 @@
-use std::{fmt, fs};
 use std::collections::HashMap;
-use std::fmt::Formatter;
+use std::fs;
 use std::str::FromStr;
 
 use anyhow::Context;
@@ -27,20 +26,13 @@ fn part1(input: &str) -> anyhow::Result<usize> {
 
 fn part2(input: &str) -> anyhow::Result<usize> {
     let mut grid: Grid = input.parse()?;
-    static DIRECTIONS: [Direction; 4] = [Direction::NORTH, Direction::WEST, Direction::SOUTH, Direction::EAST];
-    let mut dir = DIRECTIONS.iter().cycle();
     let num_steps = 1_000_000_000;
     let mut visited: HashMap<Grid, Vec<i32>> = HashMap::new();
     for cycle in 1..=num_steps {
-        for _i in 0..4 {
-            let d = dir.next().unwrap();
-            match d {
-                Direction::NORTH => grid.move_dishes_north(),
-                Direction::EAST => grid.move_dishes_east(),
-                Direction::SOUTH => grid.move_dishes_south(),
-                Direction::WEST => grid.move_dishes_west()
-            };
-        }
+        grid.move_dishes_north();
+        grid.move_dishes_west();
+        grid.move_dishes_south();
+        grid.move_dishes_east();
         let key = grid.clone();
         let e = visited.entry(key).or_default();
         e.push(cycle);
@@ -141,31 +133,19 @@ impl FromStr for Grid {
     type Err = anyhow::Error;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let cells: Vec<Vec<char>> = input.lines().filter(|line| !line.is_empty()).map(|line| line.chars().collect::<Vec<char>>()).collect();
+        let cells: Vec<Vec<char>> = input
+            .lines()
+            .filter(|line| !line.is_empty())
+            .map(|line| line.chars().collect::<Vec<char>>())
+            .collect();
         let height = cells.len();
         let width = cells.first().map(|c| c.len()).unwrap_or_default();
-        Ok(Grid { cells, width, height })
+        Ok(Grid {
+            cells,
+            width,
+            height,
+        })
     }
-}
-
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        for row in 0..self.height {
-            for col in 0..self.width {
-                write!(f, "{}", self.cells[row][col])?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-enum Direction {
-    NORTH,
-    EAST,
-    SOUTH,
-    WEST,
 }
 
 #[cfg(test)]
@@ -182,15 +162,6 @@ O.#..O.#.#
 .......O..
 #....###..
 #OO..#...."#;
-
-
-    #[test]
-    fn test1() -> anyhow::Result<()> {
-        let mut grid: Grid = INPUT.parse()?;
-        grid.move_dishes_south();
-        println!("{grid}");
-        Ok(())
-    }
 
     #[test]
     fn part1_works() -> anyhow::Result<()> {
