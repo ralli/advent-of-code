@@ -1,7 +1,7 @@
 use std::collections::{BTreeSet, VecDeque};
-use std::fmt;
-use std::fmt::Formatter;
 use std::str::FromStr;
+
+use rayon::prelude::*;
 
 pub fn part1(input: &str) -> anyhow::Result<usize> {
     let grid: Grid = input.parse()?;
@@ -42,6 +42,7 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
         .chain(lefts)
         .chain(downs)
         .chain(ups)
+        .par_bridge()
         .map(|start| number_of_energized_positions(&grid, &start))
         .max()
         .unwrap_or_default();
@@ -176,17 +177,6 @@ fn number_of_energized_positions(grid: &Grid, start: &Position) -> usize {
             _ => unreachable!(),
         }
     }
-    // println!("{grid}");
-    // for row in 0..grid.height {
-    //     for col in 0..grid.width {
-    //         if positions.contains(&(row, col)) {
-    //             print!("#");
-    //         } else {
-    //             print!(".");
-    //         }
-    //     }
-    //     println!();
-    // }
 
     positions.len()
 }
@@ -233,19 +223,6 @@ impl FromStr for Grid {
         })
     }
 }
-
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        for row in 0..self.height {
-            for col in 0..self.width {
-                write!(f, "{}", self.get(row, col))?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 enum Direction {
     Up,
@@ -263,25 +240,8 @@ impl Direction {
             Direction::Left => (0, -1),
         }
     }
-
-    fn right(&self) -> Direction {
-        match self {
-            Direction::Up => Direction::Right,
-            Direction::Right => Direction::Down,
-            Direction::Down => Direction::Left,
-            Direction::Left => Direction::Up,
-        }
-    }
-
-    fn left(&self) -> Direction {
-        match self {
-            Direction::Up => Direction::Left,
-            Direction::Left => Direction::Down,
-            Direction::Down => Direction::Right,
-            Direction::Right => Direction::Up,
-        }
-    }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
