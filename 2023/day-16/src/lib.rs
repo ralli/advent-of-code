@@ -10,7 +10,47 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
         col: 0,
         direction: Direction::Right,
     };
-    let mut q = VecDeque::from([initial]);
+    let result = number_of_energized_positions(&grid, &initial);
+    Ok(result)
+}
+
+pub fn part2(input: &str) -> anyhow::Result<usize> {
+    let grid: Grid = input.parse()?;
+
+    let rights = (0..grid.height).map(|row| Position {
+        row: row,
+        col: 0,
+        direction: Direction::Right,
+    });
+    let lefts = (0..grid.height).map(|row| Position {
+        row: row,
+        col: grid.width - 1,
+        direction: Direction::Left,
+    });
+    let downs = (0..grid.width).map(|col| Position {
+        row: 0,
+        col,
+        direction: Direction::Down,
+    });
+    let ups = (0..grid.width).map(|col| Position {
+        row: grid.height - 1,
+        col,
+        direction: Direction::Up,
+    });
+
+    let result = rights
+        .chain(lefts)
+        .chain(downs)
+        .chain(ups)
+        .map(|start| number_of_energized_positions(&grid, &start))
+        .max()
+        .unwrap_or_default();
+
+    Ok(result)
+}
+
+fn number_of_energized_positions(grid: &Grid, start: &Position) -> usize {
+    let mut q = VecDeque::from([*start]);
     let mut positions: BTreeSet<(i32, i32)> = BTreeSet::new();
     let mut visited: BTreeSet<Position> = BTreeSet::new();
 
@@ -148,12 +188,7 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
     //     println!();
     // }
 
-    let result = positions.len();
-    Ok(result)
-}
-
-pub fn part2(input: &str) -> anyhow::Result<usize> {
-    Ok(0)
+    positions.len()
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -273,7 +308,7 @@ mod tests {
     #[test]
     fn part2_works() -> anyhow::Result<()> {
         let result = part2(INPUT)?;
-        let expected = 145;
+        let expected = 51;
         assert_eq!(result, expected);
         Ok(())
     }
