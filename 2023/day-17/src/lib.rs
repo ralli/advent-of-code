@@ -28,6 +28,7 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
             Direction::Right,
         ]
         .iter()
+        .filter(|&&d| d != current.direction.opposite())
         .filter_map(|&d| {
             let (dr, dc) = d.delta();
             let direction_count = if d == current.direction {
@@ -185,6 +186,15 @@ impl Direction {
             Direction::Down => (1, 0),
             Direction::Left => (0, -1),
             Direction::Right => (0, 1),
+        }
+    }
+
+    fn opposite(&self) -> Self {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Down => Direction::Up,
+            Direction::Left => Direction::Right,
+            Direction::Right => Direction::Left,
         }
     }
 }

@@ -2,7 +2,7 @@ use std::fs;
 
 use anyhow::Context;
 
-use day_16::{part1, part2};
+use day_17::{part1, part2};
 
 fn main() -> anyhow::Result<()> {
     let filename = "day-17.txt";
