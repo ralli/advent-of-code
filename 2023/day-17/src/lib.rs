@@ -1,168 +1,118 @@
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BinaryHeap};
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
+use pathfinding::prelude::dijkstra;
+
 pub fn part1(input: &str) -> anyhow::Result<usize> {
     let grid: Grid = input.parse()?;
-    let mut q = BinaryHeap::from([Edge {
-        distance: 0,
-        pos: (0, 0),
-        direction: Direction::Right, // first direction does not matter (direction_count = 0)
+    let start = (0, 0);
+    let goal = (grid.height as i32 - 1, grid.width as i32 - 1);
+    let min = 0;
+    let max = 3;
+    let start_edge = Edge {
+        pos: start,
+        direction: Direction::Right,
         direction_count: 0,
-    }]);
-
-    let mut distances: BTreeMap<(i32, i32), u32> = BTreeMap::from([((0, 0), 0)]);
-    let mut pred: BTreeMap<(i32, i32), Edge> = BTreeMap::new();
-
-    while let Some(current) = q.pop() {
-        let (row, col) = current.pos;
-        // if row + 1 == grid.width as i32 && col + 1 == grid.height as i32 {
-        //     break;
-        // }
-        let mut next: Vec<Edge> = [
-            Direction::Up,
-            Direction::Down,
-            Direction::Left,
-            Direction::Right,
-        ]
-        .iter()
-        .filter(|&&d| d != current.direction.opposite())
-        .filter_map(|&d| {
-            let (dr, dc) = d.delta();
-            let direction_count = if d == current.direction {
-                current.direction_count + 1
-            } else {
-                1
-            };
-            if direction_count > 3 {
-                return None;
-            }
-            let next_row = row + dr;
-            if next_row < 0 || next_row >= grid.height as i32 {
-                return None;
-            }
-
-            let next_col = col + dc;
-            if next_col < 0 || next_col >= grid.width as i32 {
-                return None;
-            }
-
-            let edge_distance = grid.cells[next_row as usize][next_col as usize];
-            let distance = current.distance + edge_distance;
-            let bla = distances.entry((next_row, next_col)).or_insert(u32::MAX);
-
-            if distance < *bla {
-                *bla = distance;
-                let e = Edge {
-                    distance,
-                    pos: (next_row, next_col),
-                    direction: d,
-                    direction_count,
-                };
-                Some(e)
-            } else {
-                None
-            }
-        })
-        .collect();
-        for e in next.iter() {
-            pred.insert(e.pos, current);
-        }
-        while let Some(e) = q.pop() {
-            if !next.iter().any(|x| x.pos == e.pos) {
-                next.push(e);
-            }
-        }
-        q.extend(next.into_iter());
-        // println!("{current:?}:  {q:?}");
-    }
-
-    // dbg!(&distances);
-    print_grid(&grid, &pred, &distances);
-    let bottom_right = ((grid.height - 1) as i32, (grid.width - 1) as i32);
-    let result = distances.get(&bottom_right).copied().unwrap_or_default();
-    Ok(result as usize)
-}
-
-fn path(
-    grid: &Grid,
-    pred: &BTreeMap<(i32, i32), Edge>,
-    distances: &BTreeMap<(i32, i32), u32>,
-) -> Vec<((i32, i32), (i32, i32), Direction, u32)> {
-    let mut pos = (grid.height as i32 - 1, grid.width as i32 - 1);
-    let mut result = Vec::new();
-    while pos != (0, 0) {
-        let e = pred.get(&pos).unwrap();
-        let d = distances[&pos];
-        result.push((e.pos, pos, e.direction, d));
-        pos = e.pos;
-    }
-    result
-}
-fn print_grid(
-    grid: &Grid,
-    pred: &BTreeMap<(i32, i32), Edge>,
-    distances: &BTreeMap<(i32, i32), u32>,
-) {
-    let mut map = grid
-        .cells
-        .iter()
-        .map(|r| {
-            r.iter()
-                .map(|c| (c + '0' as u32) as u8 as char)
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<_>>();
-    let path = path(grid, pred, distances);
-
-    for (from, to, dir, dist) in path.into_iter().rev() {
-        println!("{from:?} {to:?} {dir:?} {dist}");
-        let (row, col) = to;
-        map[row as usize][col as usize] = dir.to_char();
-    }
-    println!();
-    for line in map.into_iter() {
-        for c in line.into_iter() {
-            print!("{c}");
-        }
-        println!();
-    }
+    };
+    let (path, result) = dijkstra(
+        &start_edge,
+        |e| successors(&grid, e, min, max),
+        |e| e.pos == goal,
+    )
+    .unwrap();
+    Ok(result)
 }
 
 pub fn part2(input: &str) -> anyhow::Result<usize> {
-    Ok(0)
+    let grid: Grid = input.parse()?;
+    let start = (0, 0);
+    let goal = (grid.height as i32 - 1, grid.width as i32 - 1);
+    let min = 4;
+    let max = 10;
+    let start_edge = Edge {
+        pos: start,
+        direction: Direction::Right,
+        direction_count: 0,
+    };
+    let (path, result) = dijkstra(
+        &start_edge,
+        |e| successors(&grid, e, min, max),
+        |e| e.pos == goal,
+    )
+    .unwrap();
+    Ok(result)
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+fn successors(grid: &Grid, edge: &Edge, min: u32, max: u32) -> Vec<(Edge, usize)> {
+    let mut result = Vec::new();
+    static DIRECTIONS: [Direction; 4] = [
+        Direction::Up,
+        Direction::Down,
+        Direction::Left,
+        Direction::Right,
+    ];
+    let opposite = edge.direction.opposite();
+    let (row, col) = edge.pos;
+    for &direction in DIRECTIONS.iter() {
+        if direction == opposite {
+            continue;
+        }
+        if direction != edge.direction && edge.direction_count < min {
+            continue;
+        }
+        let (dr, dc) = direction.delta();
+        let (next_row, next_col) = (row + dr, col + dc);
+        if next_row < 0
+            || next_row >= grid.height as i32
+            || next_col < 0
+            || next_col >= grid.width as i32
+        {
+            continue;
+        }
+        let next_direction_count = if direction == edge.direction {
+            edge.direction_count + 1
+        } else {
+            1
+        };
+        if next_direction_count > max {
+            continue;
+        }
+
+        let distance = grid.cells[next_row as usize][next_col as usize];
+        result.push((
+            Edge {
+                pos: (next_row, next_col),
+                direction,
+                direction_count: next_direction_count,
+            },
+            distance,
+        ));
+    }
+    // println!("{result:?}");
+    result
+}
+
+#[derive(Debug)]
+struct PrioQueue {
+    edges: Vec<Edge>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct Edge {
-    distance: u32,
     pos: (i32, i32),
     direction: Direction,
     direction_count: u32,
 }
 
-impl PartialOrd for Edge {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Edge {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.distance.cmp(&self.distance)
-    }
-}
-
 #[derive(Debug)]
 struct Grid {
-    cells: Vec<Vec<u32>>,
+    cells: Vec<Vec<usize>>,
     width: usize,
     height: usize,
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum Direction {
     Up,
     Down,
@@ -203,9 +153,13 @@ impl FromStr for Grid {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let cells: Vec<Vec<u32>> = s
+        let cells: Vec<Vec<usize>> = s
             .lines()
-            .map(|line| line.chars().map(|c| c.to_digit(10).unwrap()).collect())
+            .map(|line| {
+                line.chars()
+                    .map(|c| c.to_digit(10).unwrap() as usize)
+                    .collect()
+            })
             .collect();
         let height = cells.len();
         let width = cells.first().map(|l| l.len()).unwrap_or_default();
@@ -247,22 +201,6 @@ mod tests {
 2546548887735
 4322674655533"#;
 
-    #[test]
-    fn test1() {
-        let e1 = Edge {
-            distance: 0,
-            pos: (1, 1),
-            direction: Direction::Down,
-            direction_count: 10,
-        };
-        let e2 = Edge {
-            distance: 1,
-            pos: (0, 0),
-            direction: Direction::Up,
-            direction_count: 0,
-        };
-        assert!(e1 < e2);
-    }
     #[test]
     fn part1_works() -> anyhow::Result<()> {
         let result = part1(INPUT)?;
