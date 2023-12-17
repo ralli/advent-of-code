@@ -53,7 +53,7 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
     let mut distances = HashMap::from([(start_edge, 0)]);
 
     while let Some((current, distance)) = q.pop() {
-        if current.pos == goal {
+        if current.pos == goal && current.direction_count >= min {
             return Ok(distance);
         }
         let next = successors(&grid, &current, min, max);
