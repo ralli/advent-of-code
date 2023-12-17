@@ -1,5 +1,4 @@
-use std::fmt;
-use std::fmt::Formatter;
+use anyhow::anyhow;
 use std::str::FromStr;
 
 use pathfinding::prelude::dijkstra;
@@ -10,18 +9,7 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
     let goal = (grid.height as i32 - 1, grid.width as i32 - 1);
     let min = 1;
     let max = 3;
-    let start_edge = Edge {
-        pos: start,
-        direction: Direction::Right,
-        direction_count: 0,
-    };
-    let (_path, result) = dijkstra(
-        &start_edge,
-        |e| successors(&grid, e, min, max),
-        |e| e.pos == goal,
-    )
-    .unwrap();
-    Ok(result)
+    find_solution(&grid, start, goal, min, max).ok_or_else(|| anyhow!("no solution found"))
 }
 
 pub fn part2(input: &str) -> anyhow::Result<usize> {
@@ -30,38 +18,40 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
     let goal = (grid.height as i32 - 1, grid.width as i32 - 1);
     let min = 4;
     let max = 10;
+    find_solution(&grid, start, goal, min, max).ok_or_else(|| anyhow!("no solution found"))
+}
+
+fn find_solution(
+    grid: &Grid,
+    start: (i32, i32),
+    goal: (i32, i32),
+    min: u32,
+    max: u32,
+) -> Option<usize> {
     let start_edge = Edge {
         pos: start,
         direction: Direction::Right,
         direction_count: 0,
     };
-    let (_path, result) = dijkstra(
+    dijkstra(
         &start_edge,
-        |e| successors(&grid, e, min, max),
+        |e| successors(grid, e, min, max),
         |e| e.pos == goal,
     )
-    .unwrap();
-    Ok(result)
+    .map(|(_path, distance)| distance)
 }
 
 fn successors(grid: &Grid, edge: &Edge, min: u32, max: u32) -> Vec<(Edge, usize)> {
-    let mut result = Vec::new();
     static DIRECTIONS: [Direction; 4] = [
         Direction::Up,
         Direction::Down,
         Direction::Left,
         Direction::Right,
     ];
-    let opposite = edge.direction.opposite();
-    for &direction in DIRECTIONS.iter() {
-        if direction == opposite {
-            continue;
-        }
-        if let Some((edge, distance)) = edge_in_direction(grid, edge, direction, min, max) {
-            result.push((edge, distance));
-        }
-    }
-    result
+    DIRECTIONS
+        .iter()
+        .filter_map(|&direction| edge_in_direction(grid, edge, direction, min, max))
+        .collect()
 }
 
 fn edge_in_direction(
@@ -71,6 +61,9 @@ fn edge_in_direction(
     min: u32,
     max: u32,
 ) -> Option<(Edge, usize)> {
+    if direction == edge.direction.opposite() {
+        return None;
+    }
     let (dr, dc) = direction.delta();
     let mut distance = 0;
     let (mut row, mut col) = edge.pos;
@@ -179,18 +172,6 @@ impl FromStr for Grid {
             width,
             height,
         })
-    }
-}
-
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        for (row, line) in self.cells.iter().enumerate() {
-            for (col, c) in line.iter().enumerate() {
-                write!(f, "{}", c)?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
     }
 }
 
