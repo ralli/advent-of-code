@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-use pathfinding::prelude::dijkstra;
+use anyhow::anyhow;
 
 pub fn part1(input: &str) -> anyhow::Result<usize> {
     let grid: Grid = input.parse()?;
@@ -15,13 +16,25 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
         direction: Direction::Right,
         direction_count: 0,
     };
-    let (_path, result) = dijkstra(
-        &start_edge,
-        |e| successors(&grid, e, min, max),
-        |e| e.pos == goal,
-    )
-    .unwrap();
-    Ok(result)
+    let mut q = PriorityQueue::new();
+    q.push(start_edge, 0);
+    let mut distances: HashMap<Edge, usize> = HashMap::new();
+
+    while let Some((current, distance)) = q.pop() {
+        if current.pos == goal {
+            return Ok(distance);
+        }
+        let next = successors(&grid, &current, min, max);
+        for (e, d) in next.into_iter() {
+            let next_distance = distance + d;
+            let found_distance = distances.entry(e).or_insert(usize::MAX);
+            if next_distance < *found_distance {
+                *found_distance = next_distance;
+                q.push(e, next_distance);
+            }
+        }
+    }
+    Err(anyhow!("no solution found"))
 }
 
 pub fn part2(input: &str) -> anyhow::Result<usize> {
@@ -35,13 +48,57 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
         direction: Direction::Right,
         direction_count: 0,
     };
-    let (_path, result) = dijkstra(
-        &start_edge,
-        |e| successors(&grid, e, min, max),
-        |e| e.pos == goal,
-    )
-    .unwrap();
-    Ok(result)
+    let mut q = PriorityQueue::new();
+    q.push(start_edge, 0);
+    let mut distances = HashMap::from([(start_edge, 0)]);
+
+    while let Some((current, distance)) = q.pop() {
+        if current.pos == goal {
+            return Ok(distance);
+        }
+        let next = successors(&grid, &current, min, max);
+        for (e, d) in next.into_iter() {
+            let next_distance = distance + d;
+            let found_distance = distances.entry(e).or_insert(usize::MAX);
+            if next_distance < *found_distance {
+                *found_distance = next_distance;
+                q.push(e, next_distance);
+            }
+        }
+    }
+    Err(anyhow!("no solution found"))
+}
+
+#[derive(Debug)]
+struct PriorityQueue {
+    edges: Vec<(Edge, usize)>,
+}
+
+impl PriorityQueue {
+    fn new() -> Self {
+        Self { edges: Vec::new() }
+    }
+
+    fn push(&mut self, edge: Edge, distance: usize) {
+        if let Some(idx) = self.edges.iter().position(|(e, _)| e == &edge) {
+            self.edges[idx] = (edge, distance);
+        } else {
+            self.edges.push((edge, distance));
+        }
+    }
+
+    fn pop(&mut self) -> Option<(Edge, usize)> {
+        if let Some((idx, _)) = self
+            .edges
+            .iter()
+            .enumerate()
+            .min_by(|(_, (_, d1)), (_, (_, d2))| d1.cmp(d2))
+        {
+            Some(self.edges.remove(idx))
+        } else {
+            None
+        }
+    }
 }
 
 fn successors(grid: &Grid, edge: &Edge, min: u32, max: u32) -> Vec<(Edge, usize)> {
@@ -89,7 +146,6 @@ fn successors(grid: &Grid, edge: &Edge, min: u32, max: u32) -> Vec<(Edge, usize)
             distance,
         ));
     }
-    // println!("{result:?}");
     result
 }
 
