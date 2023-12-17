@@ -8,7 +8,7 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
     let grid: Grid = input.parse()?;
     let start = (0, 0);
     let goal = (grid.height as i32 - 1, grid.width as i32 - 1);
-    let min = 0;
+    let min = 1;
     let max = 3;
     let start_edge = Edge {
         pos: start,
@@ -53,49 +53,69 @@ fn successors(grid: &Grid, edge: &Edge, min: u32, max: u32) -> Vec<(Edge, usize)
         Direction::Right,
     ];
     let opposite = edge.direction.opposite();
-    let (row, col) = edge.pos;
     for &direction in DIRECTIONS.iter() {
         if direction == opposite {
             continue;
         }
-        if direction != edge.direction && edge.direction_count < min {
-            continue;
+        if let Some((edge, distance)) = edge_in_direction(grid, edge, direction, min, max) {
+            result.push((edge, distance));
         }
-        let (dr, dc) = direction.delta();
-        let (next_row, next_col) = (row + dr, col + dc);
-        if next_row < 0
-            || next_row >= grid.height as i32
-            || next_col < 0
-            || next_col >= grid.width as i32
-        {
-            continue;
-        }
-        let next_direction_count = if direction == edge.direction {
-            edge.direction_count + 1
-        } else {
-            1
-        };
-        if next_direction_count > max {
-            continue;
-        }
+    }
+    result
+}
 
-        let distance = grid.cells[next_row as usize][next_col as usize];
-        result.push((
+fn edge_in_direction(
+    grid: &Grid,
+    edge: &Edge,
+    direction: Direction,
+    min: u32,
+    max: u32,
+) -> Option<(Edge, usize)> {
+    let (dr, dc) = direction.delta();
+    let mut distance = 0;
+    let (mut row, mut col) = edge.pos;
+    let mut direction_count = if direction == edge.direction {
+        edge.direction_count
+    } else {
+        0
+    };
+    if direction_count < min {
+        while direction_count < min {
+            row += dr;
+            col += dc;
+            if row < 0 || row >= grid.height as i32 || col < 0 || col >= grid.width as i32 {
+                return None;
+            }
+            distance += grid.cells[row as usize][col as usize];
+            direction_count += 1;
+        }
+        return Some((
             Edge {
-                pos: (next_row, next_col),
+                pos: (row, col),
                 direction,
-                direction_count: next_direction_count,
+                direction_count,
             },
             distance,
         ));
     }
-    // println!("{result:?}");
-    result
-}
-
-#[derive(Debug)]
-struct PrioQueue {
-    edges: Vec<Edge>,
+    row += dr;
+    col += dc;
+    if row < 0 || row >= grid.height as i32 || col < 0 || col >= grid.width as i32 {
+        return None;
+    }
+    distance += grid.cells[row as usize][col as usize];
+    direction_count += 1;
+    if direction_count > max {
+        return None;
+    }
+    Some((
+        Edge {
+            pos: (row, col),
+            direction,
+            direction_count,
+        },
+        distance,
+    ))
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -121,15 +141,6 @@ enum Direction {
 }
 
 impl Direction {
-    fn to_char(&self) -> char {
-        match self {
-            Direction::Up => '^',
-            Direction::Down => 'v',
-            Direction::Left => '<',
-            Direction::Right => '>',
-        }
-    }
-
     fn delta(&self) -> (i32, i32) {
         match self {
             Direction::Up => (-1, 0),
