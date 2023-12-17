@@ -15,7 +15,7 @@ pub fn part1(input: &str) -> anyhow::Result<usize> {
         direction: Direction::Right,
         direction_count: 0,
     };
-    let (path, result) = dijkstra(
+    let (_path, result) = dijkstra(
         &start_edge,
         |e| successors(&grid, e, min, max),
         |e| e.pos == goal,
@@ -35,7 +35,7 @@ pub fn part2(input: &str) -> anyhow::Result<usize> {
         direction: Direction::Right,
         direction_count: 0,
     };
-    let (path, result) = dijkstra(
+    let (_path, result) = dijkstra(
         &start_edge,
         |e| successors(&grid, e, min, max),
         |e| e.pos == goal,
@@ -212,7 +212,7 @@ mod tests {
     #[test]
     fn part2_works() -> anyhow::Result<()> {
         let result = part2(INPUT)?;
-        let expected = 51;
+        let expected = 94;
         assert_eq!(result, expected);
         Ok(())
     }
