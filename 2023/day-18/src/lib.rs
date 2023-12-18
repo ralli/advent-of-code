@@ -1,7 +1,3 @@
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::fmt;
-use std::fmt::Formatter;
-use std::str::FromStr;
 use anyhow::anyhow;
 use nom::bytes::complete::{tag, take_while_m_n};
 use nom::character::complete;
@@ -9,57 +5,76 @@ use nom::character::complete::{line_ending, one_of, space1};
 use nom::combinator::map_res;
 use nom::IResult;
 use nom::multi::separated_list1;
-use nom::Parser;
-use nom::sequence::{delimited, tuple};
+use nom::sequence::delimited;
 
-pub fn part1(input: &str) -> anyhow::Result<usize> {
-    let mut state = parse_input(input)?;
-    let commands = state.commands.clone();
-    for cmd in commands.iter() {
-        state.process_command(cmd);
+pub fn part1(input: &str) -> anyhow::Result<i64> {
+    let commands = parse_input(input)?;
+    let mut start = Position::new(0, 0);
+    let mut internal_area = 0;
+
+    for command in commands.iter() {
+        let (dx, dy) = command.direction.delta();
+        let end = Position::new(start.x + dx * command.distance, start.y + dy * command.distance);
+        internal_area += start.x * end.y - start.y * end.x;
+        start = end;
     }
-    println!("{}", state.grid);
-    state.grid.floodfill();
-    println!("{}", state.grid);
-    let result = state.grid.count_filled();
-    Ok(result)
+
+    let internal_points = internal_area.abs() / 2;
+    dbg!(internal_points);
+    let num_edge_points: i64 = commands.iter().map(|c| c.distance).sum::<i64>() / 2 + 1;
+    dbg!(num_edge_points);
+    Ok(internal_points + num_edge_points)
 }
 
-pub fn part2(input: &str) -> anyhow::Result<usize> {
-    Ok(0)
-}
+pub fn part2(input: &str) -> anyhow::Result<i64> {
+    let commands = parse_input(input)?;
+    let mut start = Position::new(0, 0);
+    let mut internal_area = 0;
 
-#[derive(Debug)]
-struct State {
-    commands: Vec<Command>,
-    pos: Position,
-    grid: Grid,
-}
-
-impl State {
-    fn process_command(&mut self, command: &Command) {
-        let (dr, dc) = command.direction.delta();
-        for _ in 0..command.distance {
-            self.pos.row += dr;
-            self.pos.col += dc;
-            self.grid.put(self.pos.row, self.pos.col, command.color);
-        }
+    for command in commands.iter() {
+        let distance = command.color >> 4;
+        let direction = match command.color & 0xf {
+            0 => Direction::Right,
+            1 => Direction::Down,
+            2 => Direction::Left,
+            3 => Direction::Up,
+            _ => unreachable!("{:x}", command.color)
+        };
+        let (dx, dy) = direction.delta();
+        let end = Position::new(start.x + dx * distance, start.y + dy * distance);
+        // shoelace formula (without division by 2)
+        internal_area += start.x * end.y - start.y * end.x;
+        start = end;
     }
+
+    // shoelace formula (division by 2)
+    let internal_points = internal_area.abs() / 2;
+    dbg!(internal_points);
+
+    // pick's theorem is A = I + R/2 - 1
+    // A is the area of the polygon (calculated above)
+    // R is the number of points on the border = sum of all distances
+    // I is the number of internal points. (not relevant here)
+    //
+    // R/2 - 1 is the inside area taken by cubes of the the edge within the polygon.
+    //
+    // The "A" we calculate does not cover all "cube areas" on the edge.
+    // To get the total Area, we will have to add the missing area of edge-cubes lying on the outside of the polygon.
+    //
+    // This is where the R/2 + 1 comes from (R = (R/2) - 1 + (R/2) + 1) :-)
+
+    let num_edge_points: i64 = commands.iter().map(|c| c.color >> 4).sum::<i64>() / 2 + 1;
+    dbg!(num_edge_points);
+    Ok(internal_points + num_edge_points)
 }
 
 #[derive(Debug, Copy, Clone)]
 struct Command {
     direction: Direction,
-    distance: u32,
-    color: Color,
+    distance: i64,
+    color: i64,
 }
 
-#[derive(Debug, Copy, Clone)]
-struct Color {
-    red: u8,
-    green: u8,
-    blue: u8,
-}
 
 #[derive(Debug, Copy, Clone)]
 enum Direction {
@@ -70,169 +85,32 @@ enum Direction {
 }
 
 impl Direction {
-    fn delta(&self) -> (i32, i32) {
+    fn delta(&self) -> (i64, i64) {
         match self {
-            Direction::Up => (-1, 0),
-            Direction::Down => (1, 0),
-            Direction::Left => (0, -1),
-            Direction::Right => (0, 1)
+            Direction::Up => (0, 1),
+            Direction::Down => (0, -1),
+            Direction::Left => (-1, 0),
+            Direction::Right => (1, 0)
         }
-    }
-}
-
-#[derive(Debug)]
-struct Grid {
-    cubes: BTreeMap<Position, Color>,
-}
-
-impl Grid {
-    fn new() -> Self {
-        Self { cubes: BTreeMap::new() }
-    }
-
-    fn put(&mut self, row: i32, col: i32, color: Color) {
-        self.cubes.insert(Position::new(row, col), color);
-    }
-
-    fn get(&self, row: i32, col: i32) -> Option<Color> {
-        self.cubes.get(&Position::new(row, col)).copied()
-    }
-
-    fn is_set(&self, row: i32, col: i32) -> bool {
-        self.cubes.contains_key(&Position::new(row, col))
-    }
-
-    fn get_min_row(&self) -> i32 {
-        self.cubes.keys().map(|c| c.row).min().unwrap_or_default()
-    }
-
-    fn get_max_row(&self) -> i32 {
-        self.cubes.keys().map(|c| c.row).max().unwrap_or_default()
-    }
-
-    fn get_min_col(&self) -> i32 {
-        self.cubes.keys().map(|c| c.col).min().unwrap_or_default()
-    }
-
-    fn get_max_col(&self) -> i32 {
-        self.cubes.keys().map(|c| c.col).max().unwrap_or_default()
-    }
-
-    fn count_filled(&self) -> usize {
-        let min_row = self.get_min_row();
-        let max_row = self.get_max_row();
-        let min_col = self.get_min_col();
-        let max_col = self.get_max_col();
-        let mut result = 0;
-        for row in min_row..=max_row {
-            for col in min_col..=max_col {
-                if let Some(Color { red: 255, green: 255, blue: 255 }) = self.get(row, col) {} else {
-                    result += 1;
-                }
-            }
-        }
-        result
-    }
-    fn floodfill(&mut self) {
-        let min_row = self.get_min_row() - 1;
-        let max_row = self.get_max_row() + 1;
-        let min_col = self.get_min_col() - 1;
-        let max_col = self.get_max_col() + 1;
-        let start = Position::new(min_row, min_col);
-        let mut q = VecDeque::from([start]);
-
-        while let Some(current) = q.pop_front() {
-            if (self.is_set(current.row, current.col)) {
-                continue;
-            }
-            self.put(current.row, current.col, Color { red: 255, green: 255, blue: 255 });
-
-            if current.row > min_row {
-                let next_pos = Position::new(current.row - 1, current.col);
-                q.push_back(next_pos);
-            }
-
-            if current.row < max_row {
-                let next_pos = Position::new(current.row + 1, current.col);
-                q.push_back(next_pos);
-            }
-
-            if current.col > min_col {
-                let next_pos = Position::new(current.row, current.col - 1);
-                q.push_back(next_pos);
-            }
-
-            if current.col < max_col {
-                let next_pos = Position::new(current.row, current.col + 1);
-                q.push_back(next_pos);
-            }
-        }
-    }
-
-    fn fill(&mut self) {
-        let min_row = self.get_min_row();
-        let max_row = self.get_max_row();
-        let min_col = self.get_min_col();
-        let max_col = self.get_max_col();
-
-        for row in min_row..=max_row {
-            let mut col = min_col;
-            while col <= max_col {
-                while !self.is_set(row, col) && col <= max_col {
-                    col += 1;
-                }
-                while self.is_set(row, col) && col <= max_col {
-                    col += 1;
-                }
-                while !self.is_set(row, col) && col <= max_col {
-                    self.put(row, col, Color { red: 0, green: 0, blue: 0 });
-                    col += 1;
-                }
-                if self.is_set(row, col) && col <= max_col {
-                    col += 1;
-                }
-            }
-        }
-    }
-}
-
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let min_row = self.get_min_row();
-        let max_row = self.get_max_row();
-        let min_col = self.get_min_col();
-        let max_col = self.get_max_col();
-
-        for row in min_row..=max_row {
-            for col in min_col..=max_col {
-                let ch = if self.is_set(row, col) { '#' } else { '.' };
-                write!(f, "{ch}")?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Position {
-    row: i32,
-    col: i32,
+    x: i64,
+    y: i64,
 }
 
 impl Position {
-    fn new(row: i32, col: i32) -> Self {
-        Self { row, col }
+    fn new(row: i64, col: i64) -> Self {
+        Self { x: row, y: col }
     }
 }
 
 
-fn parse_input(input: &str) -> anyhow::Result<State> {
+fn parse_input(input: &str) -> anyhow::Result<Vec<Command>> {
     let (_, commands) = parse_commands(input).map_err(|e| anyhow!(e.to_string()))?;
-    let pos = Position::new(0, 0);
-    let mut grid = Grid::new();
-    grid.put(pos.row, pos.col, Color { red: 0, green: 0, blue: 0 });
-    Ok(State { commands, pos, grid })
+    Ok(commands)
 }
 
 fn parse_commands(input: &str) -> IResult<&str, Vec<Command>> {
@@ -245,29 +123,29 @@ fn parse_command(input: &str) -> IResult<&str, Command> {
     let (input, distance) = complete::u32(input)?;
     let (input, _) = space1(input)?;
     let (input, color) = delimited(tag("("), hex_color, tag(")"))(input)?;
-    Ok((input, Command { direction, distance, color }))
+    Ok((input, Command { direction, distance: distance as i64, color: color as i64 }))
 }
 
-fn from_hex(input: &str) -> Result<u8, std::num::ParseIntError> {
-    u8::from_str_radix(input, 16)
+fn from_hex(input: &str) -> Result<u32, std::num::ParseIntError> {
+    u32::from_str_radix(input, 16)
 }
 
 fn is_hex_digit(c: char) -> bool {
     c.is_digit(16)
 }
 
-fn hex_primary(input: &str) -> IResult<&str, u8> {
+fn hex_primary(input: &str) -> IResult<&str, u32> {
     map_res(
-        take_while_m_n(2, 2, is_hex_digit),
+        take_while_m_n(6, 6, is_hex_digit),
         from_hex,
     )(input)
 }
 
-fn hex_color(input: &str) -> IResult<&str, Color> {
+fn hex_color(input: &str) -> IResult<&str, u32> {
     let (input, _) = tag("#")(input)?;
-    let (input, (red, green, blue)) = tuple((hex_primary, hex_primary, hex_primary))(input)?;
+    let (input, color) = hex_primary(input)?;
 
-    Ok((input, Color { red, green, blue }))
+    Ok((input, color))
 }
 
 fn parse_direction(input: &str) -> IResult<&str, Direction> {
@@ -277,7 +155,7 @@ fn parse_direction(input: &str) -> IResult<&str, Direction> {
         'D' => Direction::Down,
         'L' => Direction::Left,
         'R' => Direction::Right,
-        _ => unreachable!("no color"),
+        _ => unreachable!("no direction"),
     };
     Ok((input, dir))
 }
@@ -313,7 +191,24 @@ U 2 (#7a21e3)"#;
     #[test]
     fn part2_works() -> anyhow::Result<()> {
         let result = part2(INPUT)?;
-        let expected = 94;
+        let expected: i64 = 952408144115;
+        assert_eq!(result, expected);
+        Ok(())
+    }
+
+    static INPUT2: &str = r#"R 3 (#000000)
+D 2 (#000000)
+R 5 (#000000)
+U 2 (#000000)
+R 3 (#000000)
+D 4 (#000000)
+L 11 (#000000)
+U 4 (#000000)"#;
+
+    #[test]
+    fn test1() -> anyhow::Result<()> {
+        let result = part1(INPUT2)?;
+        let expected = 52;
         assert_eq!(result, expected);
         Ok(())
     }
