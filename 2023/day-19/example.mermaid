@@ -1,0 +1,37 @@
+flowchart
+%% in{s<1351:px,qqz}
+    in -->|s < 1351| px
+    in -->|s >= 1351| qqz
+%% px{a<2006:qkq,m>2090:A,rfg}
+    px -->|a < 2006| qkq
+    px -->|m > 2090| A1[A]
+    px -->|a>=2006 && m<=2090| rfg
+%% qqz{s>2770:qs,m<1801:hdj,R}
+    qqz -->|s>2770| qs
+    qqz -->|m<1801| hdj
+    qqz -->|s<=2770 && m>=1801| R1[R]
+%% qkq{x<1416:A,crn}
+    qkq -->|x<1416| A2[A]
+    qkq -->|x>=1416| crn
+%% rfg{s<537:gd,x>2440:R,A}
+    rfg -->|s<537| gd
+    rfg -->|x>2440| R2[R]
+    rfg -->|s>=537 && x<=2440| A3[A]
+%% qs{s>3448:A,lnx}
+    qs -->|s>3448| A4[A]
+    qs -->|s<=3448| lnx
+%% hdj{m>838:A,pv}
+    hdj -->|m>838| A5[A]
+    hdj -->|m<=838| pv
+%% crn{x>2662:A,R}
+    crn -->|x>2662| A6[A]
+    crn -->|x<=2662| R3[R]
+%% gd{a>3333:R,R}
+    gd -->|a>3333| R4[R]
+    gd -->|a<=3333| R
+%% lnx{m>1548:A,A}
+    lnx -->|m>1548| A7[A]
+    lnx -->|m<=1548| A8[A]
+%% pv{a>1716:R,A}
+    pv -->|a>1716| R5
+    pv -->|a<=1716| A
