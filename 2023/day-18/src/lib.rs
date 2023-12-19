@@ -3,26 +3,26 @@ use nom::bytes::complete::{tag, take_while_m_n};
 use nom::character::complete;
 use nom::character::complete::{line_ending, one_of, space1};
 use nom::combinator::map_res;
-use nom::IResult;
 use nom::multi::separated_list1;
 use nom::sequence::delimited;
+use nom::IResult;
 
 pub fn part1(input: &str) -> anyhow::Result<i64> {
     let commands = parse_input(input)?;
     let mut start = Position::new(0, 0);
     let mut internal_area = 0;
-
     for command in commands.iter() {
         let (dx, dy) = command.direction.delta();
-        let end = Position::new(start.x + dx * command.distance, start.y + dy * command.distance);
+        let end = Position::new(
+            start.x + dx * command.distance,
+            start.y + dy * command.distance,
+        );
         internal_area += start.x * end.y - start.y * end.x;
         start = end;
     }
 
     let internal_points = internal_area.abs() / 2;
-    dbg!(internal_points);
     let num_edge_points: i64 = commands.iter().map(|c| c.distance).sum::<i64>() / 2 + 1;
-    dbg!(num_edge_points);
     Ok(internal_points + num_edge_points)
 }
 
@@ -38,7 +38,7 @@ pub fn part2(input: &str) -> anyhow::Result<i64> {
             1 => Direction::Down,
             2 => Direction::Left,
             3 => Direction::Up,
-            _ => unreachable!("{:x}", command.color)
+            _ => unreachable!("{:x}", command.color),
         };
         let (dx, dy) = direction.delta();
         let end = Position::new(start.x + dx * distance, start.y + dy * distance);
@@ -49,7 +49,6 @@ pub fn part2(input: &str) -> anyhow::Result<i64> {
 
     // shoelace formula (division by 2)
     let internal_points = internal_area.abs() / 2;
-    dbg!(internal_points);
 
     // pick's theorem is A = I + R/2 - 1
     // A is the area of the polygon (calculated above)
@@ -64,7 +63,6 @@ pub fn part2(input: &str) -> anyhow::Result<i64> {
     // This is where the R/2 + 1 comes from (R = (R/2) - 1 + (R/2) + 1) :-)
 
     let num_edge_points: i64 = commands.iter().map(|c| c.color >> 4).sum::<i64>() / 2 + 1;
-    dbg!(num_edge_points);
     Ok(internal_points + num_edge_points)
 }
 
@@ -74,7 +72,6 @@ struct Command {
     distance: i64,
     color: i64,
 }
-
 
 #[derive(Debug, Copy, Clone)]
 enum Direction {
@@ -90,7 +87,7 @@ impl Direction {
             Direction::Up => (0, 1),
             Direction::Down => (0, -1),
             Direction::Left => (-1, 0),
-            Direction::Right => (1, 0)
+            Direction::Right => (1, 0),
         }
     }
 }
@@ -107,7 +104,6 @@ impl Position {
     }
 }
 
-
 fn parse_input(input: &str) -> anyhow::Result<Vec<Command>> {
     let (_, commands) = parse_commands(input).map_err(|e| anyhow!(e.to_string()))?;
     Ok(commands)
@@ -123,7 +119,14 @@ fn parse_command(input: &str) -> IResult<&str, Command> {
     let (input, distance) = complete::u32(input)?;
     let (input, _) = space1(input)?;
     let (input, color) = delimited(tag("("), hex_color, tag(")"))(input)?;
-    Ok((input, Command { direction, distance: distance as i64, color: color as i64 }))
+    Ok((
+        input,
+        Command {
+            direction,
+            distance: distance as i64,
+            color: color as i64,
+        },
+    ))
 }
 
 fn from_hex(input: &str) -> Result<u32, std::num::ParseIntError> {
@@ -131,14 +134,11 @@ fn from_hex(input: &str) -> Result<u32, std::num::ParseIntError> {
 }
 
 fn is_hex_digit(c: char) -> bool {
-    c.is_digit(16)
+    c.is_ascii_hexdigit()
 }
 
 fn hex_primary(input: &str) -> IResult<&str, u32> {
-    map_res(
-        take_while_m_n(6, 6, is_hex_digit),
-        from_hex,
-    )(input)
+    map_res(take_while_m_n(6, 6, is_hex_digit), from_hex)(input)
 }
 
 fn hex_color(input: &str) -> IResult<&str, u32> {
@@ -159,7 +159,6 @@ fn parse_direction(input: &str) -> IResult<&str, Direction> {
     };
     Ok((input, dir))
 }
-
 
 #[cfg(test)]
 mod tests {
