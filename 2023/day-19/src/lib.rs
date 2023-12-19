@@ -1,89 +1,79 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use anyhow::anyhow;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete;
 use nom::character::complete::{alpha1, line_ending, one_of};
-use nom::IResult;
 use nom::multi::{many1, separated_list1};
 use nom::sequence::{delimited, preceded};
+use nom::{character, IResult};
 
 pub fn part1(input: &str) -> anyhow::Result<i64> {
-    let state = parse_input(input)?;
-    let result: i64 = state.parts
+    let (_, state) = parse_state(input).map_err(|e| anyhow!(e.to_string()))?;
+    let result: i64 = state
+        .parts
         .iter()
-        .filter(|part| state_for_part(&state.workflows, part).as_str() == "A")
-        .map(|part| part.ratiing_sum())
+        .filter(|part| state_from_start(&state.workflows, part) == "A")
+        .map(|part| part.x + part.m + part.a + part.s)
         .sum();
     Ok(result)
 }
 
 pub fn part2(input: &str) -> anyhow::Result<i64> {
-    let state = parse_input(input)?;
-    let start = "in".to_string();
-    let ranges = Ranges {
+    let (_, state) = parse_state(input).map_err(|e| anyhow!(e.to_string()))?;
+    let start_ranges = Ranges {
         x: (1, 4000),
         m: (1, 4000),
         a: (1, 4000),
         s: (1, 4000),
     };
-    let result = count_combinations(&state.workflows, &ranges, &start);
+    let result = count_solutions(&state.workflows, &start_ranges, "in");
     Ok(result)
 }
 
-fn state_for_part(workflows: &BTreeMap<String, Workflow>, part: &Part) -> String {
-    let mut start = "in".to_string();
-
-    while let Some(workflow) = workflows.get(&start) {
-        start = workflow.rules.iter().filter_map(|r| r.next_rule_name(part)).next().unwrap();
-    }
-
-    start
-}
-
-fn count_combinations(workflows: &BTreeMap<String, Workflow>, ranges: &Ranges, name: &String) -> i64 {
-    if name.as_str() == "R" {
+fn count_solutions(workflows: &HashMap<&str, Workflow>, ranges: &Ranges, name: &str) -> i64 {
+    if name == "R" {
         0
-    } else if name.as_str() == "A" {
-        ranges.number_of_combinations()
+    } else if name == "A" {
+        ranges.num_choices()
     } else {
         let workflow = workflows.get(name).unwrap();
+
         let mut ranges = *ranges;
         let mut result = 0;
         for rule in workflow.rules.iter() {
             match rule {
-                Rule::Basic { name, op, value, next } => {
-                    let (lo, hi) = ranges.range_of(*name);
-
-                    let matching = match op {
-                        Op::Less =>
-                            (lo, hi.min(*value - 1)),
-                        Op::Greater =>
-                            (lo.max(*value + 1), hi)
+                Rule::Compare {
+                    name,
+                    op,
+                    value,
+                    next,
+                } => {
+                    let (a, b) = ranges.get(*name);
+                    let matching_range = match op {
+                        '<' => (a, b.min(*value - 1)),
+                        '>' => (a.max(*value + 1), b),
+                        _ => unreachable!("{}", op),
                     };
-
-                    let not_matching = match op {
-                        Op::Less =>
-                            (lo.max(*value), hi),
-                        Op::Greater =>
-                            (lo, hi.min(*value))
+                    let not_matching_range = match op {
+                        '<' => (*value, b),
+                        '>' => (a, *value),
+                        _ => unreachable!("{}", op),
                     };
-
-                    if matching.0 <= matching.1 {
+                    if matching_range.0 <= matching_range.1 {
                         let mut copy = ranges;
-                        copy.set_range_of(*name, matching);
-                        result += count_combinations(workflows, &copy, next);
+                        copy.set(*name, matching_range);
+                        result += count_solutions(workflows, &copy, next);
                     }
-
-                    if not_matching.0 <= not_matching.1 {
-                        ranges.set_range_of(*name, not_matching)
+                    if not_matching_range.0 <= not_matching_range.1 {
+                        ranges.set(*name, not_matching_range);
                     } else {
                         break;
                     }
                 }
                 Rule::Default { next } => {
-                    result += count_combinations(workflows, &ranges, next);
+                    result += count_solutions(workflows, &ranges, next);
                 }
             }
         }
@@ -91,59 +81,51 @@ fn count_combinations(workflows: &BTreeMap<String, Workflow>, ranges: &Ranges, n
     }
 }
 
+fn state_from_start<'a>(workflows: &'a HashMap<&str, Workflow>, part: &Part) -> &'a str {
+    let mut name = "in";
+    while let Some(w) = workflows.get(name) {
+        let next = w
+            .rules
+            .iter()
+            .find(|rule| match rule {
+                Rule::Compare {
+                    name,
+                    op,
+                    value,
+                    next: _,
+                } => match *op {
+                    '<' => {
+                        let part_value = part.get(*name);
+                        part_value < *value
+                    }
+                    '>' => {
+                        let part_value = part.get(*name);
+                        part_value > *value
+                    }
+                    _ => unreachable!("{}", op),
+                },
+                Rule::Default { .. } => true,
+            })
+            .map(|rule| match rule {
+                Rule::Compare { next, .. } => next,
+                Rule::Default { next } => next,
+            })
+            .unwrap();
+        name = next;
+    }
+    name
+}
 
 #[derive(Debug)]
-struct State {
-    workflows: BTreeMap<String, Workflow>,
+struct State<'a> {
+    workflows: HashMap<&'a str, Workflow<'a>>,
     parts: Vec<Part>,
 }
 
 #[derive(Debug)]
-struct Workflow {
-    name: String,
-    rules: Vec<Rule>,
-}
-
-#[derive(Debug)]
-enum Rule {
-    Basic {
-        name: char,
-        op: Op,
-        value: i64,
-        next: String,
-    },
-    Default {
-        next: String,
-    },
-}
-
-impl Rule {
-    fn next_rule_name(&self, part: &Part) -> Option<String> {
-        match self {
-            Rule::Basic { name, op, value, next } => {
-                let part_value = part.value_of(*name);
-                match op {
-                    Op::Less => if part_value < *value {
-                        Some(next.to_string())
-                    } else {
-                        None
-                    }
-                    Op::Greater => if part_value > *value {
-                        Some(next.to_string())
-                    } else {
-                        None
-                    }
-                }
-            }
-            Rule::Default { next } => { Some(next.to_string()) }
-        }
-    }
-}
-
-#[derive(Debug)]
-enum Op {
-    Less,
-    Greater,
+struct Workflow<'a> {
+    name: &'a str,
+    rules: Vec<Rule<'a>>,
 }
 
 #[derive(Debug)]
@@ -155,23 +137,18 @@ struct Part {
 }
 
 impl Part {
-    fn value_of(&self, name: char) -> i64 {
-        match name {
+    fn get(&self, key: char) -> i64 {
+        match key {
             'x' => self.x,
             'm' => self.m,
             'a' => self.a,
             's' => self.s,
-            _ => unreachable!("{}", name)
+            _ => unreachable!("{}", key),
         }
-    }
-
-    fn ratiing_sum(&self) -> i64 {
-        self.x + self.m + self.a + self.s
     }
 }
 
-
-#[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone)]
 struct Ranges {
     x: (i64, i64),
     m: (i64, i64),
@@ -179,106 +156,113 @@ struct Ranges {
     s: (i64, i64),
 }
 
-
 impl Ranges {
-    fn number_of_combinations(&self) -> i64 {
-        fn range_combinations(r: (i64, i64)) -> i64 {
-            let (a, b) = r;
-            b - a + 1
+    fn num_choices(&self) -> i64 {
+        fn range_choices(r: (i64, i64)) -> i64 {
+            r.1 - r.0 + 1
         }
 
-        range_combinations(self.x)
-            * range_combinations(self.m)
-            * range_combinations(self.a)
-            * range_combinations(self.s)
+        range_choices(self.x)
+            * range_choices(self.m)
+            * range_choices(self.a)
+            * range_choices(self.s)
     }
 
-    fn range_of(&self, name: char) -> (i64, i64) {
-        match name {
+    fn get(&self, key: char) -> (i64, i64) {
+        match key {
             'x' => self.x,
             'm' => self.m,
             'a' => self.a,
             's' => self.s,
-            _ => unreachable!("{}", name)
+            _ => unreachable!("{}", key),
         }
     }
 
-    fn set_range_of(&mut self, name: char, range: (i64, i64)) {
-        match name {
-            'x' => self.x = range,
-            'm' => self.m = range,
-            'a' => self.a = range,
-            's' => self.s = range,
-            _ => unreachable!("{}", name)
+    fn set(&mut self, key: char, value: (i64, i64)) {
+        match key {
+            'x' => self.x = value,
+            'm' => self.m = value,
+            'a' => self.a = value,
+            's' => self.s = value,
+            _ => unreachable!("{}", key),
         }
     }
 }
 
-
-fn parse_input(input: &str) -> anyhow::Result<State> {
-    let (_, state) = parse_state(input).map_err(|e| anyhow!(e.to_string()))?;
-    Ok(state)
+#[derive(Debug)]
+enum Rule<'a> {
+    Compare {
+        name: char,
+        op: char,
+        value: i64,
+        next: &'a str,
+    },
+    Default {
+        next: &'a str,
+    },
 }
 
 fn parse_state(input: &str) -> IResult<&str, State> {
     let (input, workflows) = separated_list1(line_ending, parse_workflow)(input)?;
     let (input, _) = many1(line_ending)(input)?;
     let (input, parts) = separated_list1(line_ending, parse_part)(input)?;
-    let workflows: BTreeMap<String, Workflow> = workflows.into_iter().fold(BTreeMap::new(), |mut m, w| {
-        m.insert(w.name.to_string(), w);
-        m
-    });
+    let workflows: HashMap<&str, Workflow> =
+        workflows.into_iter().fold(HashMap::new(), |mut m, wf| {
+            m.insert(wf.name, wf);
+            m
+        });
     Ok((input, State { workflows, parts }))
 }
 
 fn parse_part(input: &str) -> IResult<&str, Part> {
-    let (input, _) = tag("{")(input)?;
+    // {x=787,m=2655,a=1222,s=2876}
+    let (input, _) = complete::char('{')(input)?;
     let (input, x) = preceded(tag("x="), complete::i64)(input)?;
-    let (input, _) = tag(",")(input)?;
+    let (input, _) = complete::char(',')(input)?;
     let (input, m) = preceded(tag("m="), complete::i64)(input)?;
-    let (input, _) = tag(",")(input)?;
+    let (input, _) = complete::char(',')(input)?;
     let (input, a) = preceded(tag("a="), complete::i64)(input)?;
-    let (input, _) = tag(",")(input)?;
+    let (input, _) = complete::char(',')(input)?;
     let (input, s) = preceded(tag("s="), complete::i64)(input)?;
-    let (input, _) = tag("}")(input)?;
+    let (input, _) = complete::char('}')(input)?;
     Ok((input, Part { x, m, a, s }))
 }
-
 fn parse_workflow(input: &str) -> IResult<&str, Workflow> {
     let (input, name) = alpha1(input)?;
-    let (input, rules) = delimited(tag("{"), separated_list1(tag(","), parse_rule), tag("}"))(input)?;
-    Ok((input, Workflow { name: name.to_string(), rules }))
+    let (input, rules) = delimited(
+        complete::char('{'),
+        separated_list1(complete::char(','), parse_rule),
+        complete::char('}'),
+    )(input)?;
+    Ok((input, Workflow { name, rules }))
 }
 
 fn parse_rule(input: &str) -> IResult<&str, Rule> {
-    alt((parse_basic_rule, parse_default_rule))(input)
+    alt((parse_compare_rule, parse_default_rule))(input)
 }
 
-fn parse_basic_rule(input: &str) -> IResult<&str, Rule> {
+fn parse_compare_rule(input: &str) -> IResult<&str, Rule> {
     let (input, name) = one_of("xmas")(input)?;
-    let (input, op) = parse_op(input)?;
+    let (input, op) = one_of("<>")(input)?;
     let (input, value) = complete::i64(input)?;
-    let (input, _) = tag(":")(input)?;
+    let (input, _) = character::complete::char(':')(input)?;
     let (input, next) = alpha1(input)?;
-    Ok((input, Rule::Basic { name, op, value, next: next.to_string() }))
+
+    Ok((
+        input,
+        Rule::Compare {
+            name,
+            op,
+            value,
+            next,
+        },
+    ))
 }
 
 fn parse_default_rule(input: &str) -> IResult<&str, Rule> {
     let (input, next) = alpha1(input)?;
-    Ok((input, Rule::Default { next: next.to_string() }))
+    Ok((input, Rule::Default { next }))
 }
-
-fn parse_op(input: &str) -> IResult<&str, Op> {
-    let (input, op) = one_of("<>")(input)?;
-    let op = match op {
-        '<' => Op::Less,
-        '>' => Op::Greater,
-        _ => unreachable!(),
-    };
-    Ok((input, op))
-}
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -315,31 +299,5 @@ hdj{m>838:A,pv}
         let expected = 167409079868000;
         assert_eq!(result, expected);
         Ok(())
-    }
-
-    #[test]
-    fn test1() {
-        let ranges = Ranges {
-            x: (1, 4000),
-            m: (1, 4000),
-            a: (1, 4000),
-            s: (1, 4000),
-        };
-        let rules = vec![Rule::Basic { name: 'm', op: Op::Greater, value: 1548, next: "A".to_string() }, Rule::Default { next: "A".to_string() }];
-        let ans = ranges.apply_all_rules_inverted(&rules);
-        println!("{:?}", ans);
-    }
-
-    #[test]
-    fn test2() {
-        let ranges = Ranges {
-            x: (1, 4000),
-            m: (1, 4000),
-            a: (1, 4000),
-            s: (1, 4000),
-        };
-        let result = ranges.number_of_combinations();
-        let expected = 4000 * 4000 * 4000 * 4000;
-        assert_eq!(result, expected);
     }
 }
