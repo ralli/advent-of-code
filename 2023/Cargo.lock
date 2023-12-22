@@ -173,8 +173,6 @@ name = "day-21"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "itertools",
- "nom",
 ]
 
 [[package]]
