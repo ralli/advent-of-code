@@ -1,14 +1,14 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt;
-use std::fmt::Formatter;
 use anyhow::anyhow;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, line_ending, one_of, space1};
-use nom::IResult;
 use nom::multi::separated_list1;
-use nom::Parser;
 use nom::sequence::{delimited, tuple};
+use nom::IResult;
+use nom::Parser;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt;
+use std::fmt::Formatter;
 
 pub fn part1(input: &str) -> anyhow::Result<i64> {
     let (_, state) = parse_state(input).map_err(|e| anyhow!(e.to_string()))?;
@@ -31,7 +31,11 @@ pub fn part1(input: &str) -> anyhow::Result<i64> {
     }
 
     for _round in 0..num_rounds {
-        q.push_back(Signal { from: "button", to: "broadcaster", pulse: Pulse::Low });
+        q.push_back(Signal {
+            from: "button",
+            to: "broadcaster",
+            pulse: Pulse::Low,
+        });
         // println!("round: {}", round);
         while let Some(current) = q.pop_front() {
             //println!("{} -{}-> {}", current.from, current.pulse, current.to);
@@ -45,15 +49,17 @@ pub fn part1(input: &str) -> anyhow::Result<i64> {
                 let next_pulse = match module.module_type {
                     ModuleType::FlipFlop => {
                         let flip_flop_state = flip_flops.entry(module.name).or_default();
-                        let flip_flop_pulse = if *flip_flop_state { Pulse::Low } else { Pulse::High };
+                        let flip_flop_pulse = if *flip_flop_state {
+                            Pulse::Low
+                        } else {
+                            Pulse::High
+                        };
                         match current.pulse {
                             Pulse::Low => {
                                 *flip_flop_state = !*flip_flop_state;
                                 Some(flip_flop_pulse)
                             }
-                            Pulse::High => {
-                                None
-                            }
+                            Pulse::High => None,
                         }
                     }
                     ModuleType::Conjunction => {
@@ -66,13 +72,15 @@ pub fn part1(input: &str) -> anyhow::Result<i64> {
                         };
                         Some(conjunction_pulse)
                     }
-                    ModuleType::Other => {
-                        Some(current.pulse)
-                    }
+                    ModuleType::Other => Some(current.pulse),
                 };
                 if let Some(next_pulse) = next_pulse {
                     for edge in module.edges.iter() {
-                        q.push_back(Signal { from: module.name, to: edge, pulse: next_pulse });
+                        q.push_back(Signal {
+                            from: module.name,
+                            to: edge,
+                            pulse: next_pulse,
+                        });
                     }
                 }
             }
@@ -84,7 +92,11 @@ pub fn part1(input: &str) -> anyhow::Result<i64> {
 }
 
 fn find_incoming_modules<'a>(name: &str, modules: &'a HashMap<&str, Module>) -> Vec<&'a str> {
-    modules.values().filter(|m| m.edges.contains(&name)).map(|m| m.name).collect()
+    modules
+        .values()
+        .filter(|m| m.edges.contains(&name))
+        .map(|m| m.name)
+        .collect()
 }
 
 /**
@@ -135,7 +147,11 @@ pub fn part2(input: &str) -> anyhow::Result<i64> {
     let mut round = 0;
     loop {
         round += 1;
-        q.push_back(Signal { from: "button", to: "broadcaster", pulse: Pulse::Low });
+        q.push_back(Signal {
+            from: "button",
+            to: "broadcaster",
+            pulse: Pulse::Low,
+        });
         // println!("round: {}", round);
         while let Some(current) = q.pop_front() {
             //println!("{} -{}-> {}", current.from, current.pulse, current.to);
@@ -147,15 +163,17 @@ pub fn part2(input: &str) -> anyhow::Result<i64> {
                 let next_pulse = match module.module_type {
                     ModuleType::FlipFlop => {
                         let flip_flop_state = flip_flops.entry(module.name).or_default();
-                        let flip_flop_pulse = if *flip_flop_state { Pulse::Low } else { Pulse::High };
+                        let flip_flop_pulse = if *flip_flop_state {
+                            Pulse::Low
+                        } else {
+                            Pulse::High
+                        };
                         match current.pulse {
                             Pulse::Low => {
                                 *flip_flop_state = !*flip_flop_state;
                                 Some(flip_flop_pulse)
                             }
-                            Pulse::High => {
-                                None
-                            }
+                            Pulse::High => None,
                         }
                     }
                     ModuleType::Conjunction => {
@@ -164,26 +182,30 @@ pub fn part2(input: &str) -> anyhow::Result<i64> {
                         let conjunction_pulse = if e.values().all(|p| *p == Pulse::High) {
                             Pulse::Low
                         } else {
-                            if relevant_nodes.contains(&module.name) && !periods.contains_key(module.name) {
+                            if relevant_nodes.contains(&module.name)
+                                && !periods.contains_key(module.name)
+                            {
                                 periods.insert(module.name, round);
                                 if periods.len() == relevant_nodes.len() {
                                     println!("periods: {:?}", periods);
                                     let values: Vec<i64> = periods.values().copied().collect();
                                     let result = lcm_seq(&values);
-                                    return Ok(result)
+                                    return Ok(result);
                                 }
                             }
                             Pulse::High
                         };
                         Some(conjunction_pulse)
                     }
-                    ModuleType::Other => {
-                        Some(current.pulse)
-                    }
+                    ModuleType::Other => Some(current.pulse),
                 };
                 if let Some(next_pulse) = next_pulse {
                     for edge in module.edges.iter() {
-                        q.push_back(Signal { from: module.name, to: edge, pulse: next_pulse });
+                        q.push_back(Signal {
+                            from: module.name,
+                            to: edge,
+                            pulse: next_pulse,
+                        });
                     }
                 }
             }
@@ -191,7 +213,6 @@ pub fn part2(input: &str) -> anyhow::Result<i64> {
         // println!("{:?}", conjunctions);
         // println!("{:?}\n", flip_flops);
     }
-    unreachable!()
 }
 
 #[derive(Debug)]
@@ -237,10 +258,11 @@ impl fmt::Display for Pulse {
 
 fn parse_state(input: &str) -> IResult<&str, State> {
     let (input, modules) = separated_list1(line_ending, parse_module)(input)?;
-    let modules: HashMap<&str, Module> = modules.into_iter().fold(HashMap::new(), |mut m, module| {
-        m.insert(module.name, module);
-        m
-    });
+    let modules: HashMap<&str, Module> =
+        modules.into_iter().fold(HashMap::new(), |mut m, module| {
+            m.insert(module.name, module);
+            m
+        });
     Ok((input, State { modules }))
 }
 
@@ -248,20 +270,25 @@ fn parse_module(input: &str) -> IResult<&str, Module> {
     let (input, (module_type, name)) = alt((parse_module_type_and_name, parse_module_name))(input)?;
     let (input, _) = delimited(space1, tag("->"), space1)(input)?;
     let (input, edges) = separated_list1(tuple((tag(","), space1)), alpha1)(input)?;
-    Ok((input, Module { name, module_type, edges }))
+    Ok((
+        input,
+        Module {
+            name,
+            module_type,
+            edges,
+        },
+    ))
 }
 
 fn parse_module_type_and_name(input: &str) -> IResult<&str, (ModuleType, &str)> {
-    tuple(
-        (
-            one_of("%&").map(|c| match c {
-                '%' => ModuleType::FlipFlop,
-                '&' => ModuleType::Conjunction,
-                _ => unreachable!()
-            }),
-            alpha1
-        )
-    )(input)
+    tuple((
+        one_of("%&").map(|c| match c {
+            '%' => ModuleType::FlipFlop,
+            '&' => ModuleType::Conjunction,
+            _ => unreachable!(),
+        }),
+        alpha1,
+    ))(input)
 }
 
 fn parse_module_name(input: &str) -> IResult<&str, (ModuleType, &str)> {
@@ -284,8 +311,7 @@ fn lcm(a: i64, b: i64) -> i64 {
 fn gcd(a: i64, b: i64) -> i64 {
     let mut num1 = a;
     let mut num2 = b;
-    while (num2 != 0)
-    {
+    while num2 != 0 {
         let tmp = num2;
         num2 = num1 % num2;
         num1 = tmp;
@@ -295,8 +321,8 @@ fn gcd(a: i64, b: i64) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use super::*;
+    use std::collections::HashSet;
 
     static INPUT: &str = r#"broadcaster -> a
 %a -> inv, con
