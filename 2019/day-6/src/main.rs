@@ -82,7 +82,7 @@ fn invert<'a>(adj: &BTreeMap<&'a str, Vec<&'a str>>) -> BTreeMap<&'a str, Vec<&'
     result
 }
 
-fn parse_input<'a>(input: &'a str) -> anyhow::Result<BTreeMap<&'a str, Vec<&'a str>>> {
+fn parse_input(input: &str) -> anyhow::Result<BTreeMap<&str, Vec<&str>>> {
     let (_, edges) = parse_edges(input).map_err(|e| anyhow!(e.to_string()))?;
     let adj = edges
         .into_iter()
