@@ -17,6 +17,8 @@ fn main() -> anyhow::Result<()> {
     let result = part2(&content)?;
     println!("{result}");
 
+    let bla = state_machine(&content)?;
+    println!("{bla:?}");
     Ok(())
 }
 
@@ -41,6 +43,81 @@ fn part2(input: &str) -> anyhow::Result<i32> {
         }
     }
     Ok(result)
+}
+
+enum State {
+    RESET,
+    M,
+    MU,
+    MUL,
+    NUM1,
+    NUM2,
+    D,
+    DO,
+    DoParOpen,
+    DON,
+    DON2, // DON'
+    DONT,
+    DontParOpen,
+}
+
+// Implementation as state machine. Found something similar on reddit.
+fn state_machine(input: &str) -> anyhow::Result<(i32, i32)> {
+    let mut current_state = State::RESET;
+    let mut count1 = 0;
+    let mut count2 = 0;
+    let mut num1 = 0;
+    let mut num2 = 0;
+    let mut active = true;
+
+    for c in input.chars() {
+        match (&current_state, c) {
+            (State::RESET, 'm') => current_state = State::M,
+            (State::M, 'u') => current_state = State::MU,
+            (State::MU, 'l') => current_state = State::MUL,
+            (State::MUL, '(') => {
+                current_state = State::NUM1;
+                num1 = 0;
+            }
+            (State::NUM1, c) if c.is_ascii_digit() => {
+                num1 *= 10;
+                num1 += c.to_digit(10).unwrap() as i32;
+            }
+            (State::NUM1, ',') => {
+                current_state = State::NUM2;
+                num2 = 0;
+            }
+            (State::NUM2, c) if c.is_ascii_digit() => {
+                num2 *= 10;
+                num2 += c.to_digit(10).unwrap() as i32;
+            }
+            (State::NUM2, ')') => {
+                current_state = State::RESET;
+                count1 += num1 * num2;
+                if active {
+                    count2 += num1 * num2;
+                }
+            }
+            (State::RESET, 'd') => current_state = State::D,
+            (State::D, 'o') => current_state = State::DO,
+            (State::DO, 'n') => current_state = State::DON,
+            (State::DON, '\'') => current_state = State::DON2,
+            (State::DON2, 't') => current_state = State::DONT,
+            (State::DONT, '(') => current_state = State::DontParOpen,
+            (State::DontParOpen, ')') => {
+                current_state = State::RESET;
+                active = false;
+            }
+            (State::DO, '(') => current_state = State::DoParOpen,
+            (State::DoParOpen, ')') => {
+                current_state = State::RESET;
+                active = true;
+            }
+            _ => current_state = State::RESET,
+        }
+    }
+
+    Ok((count1, count2))
 }
 
 fn parse_input(input: &str) -> anyhow::Result<Vec<(i32, i32)>> {
