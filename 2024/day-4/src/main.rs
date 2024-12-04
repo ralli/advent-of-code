@@ -16,27 +16,19 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(input: &str) -> usize {
     let grid = Grid::new(input);
-    let deltas = [
-        (-1, -1),
-        (-1, 0),
-        (-1, 1),
-        (0, 1),
-        (1, 1),
-        (1, 0),
-        (1, -1),
-        (0, -1),
-    ];
     let mut result = 0;
 
     for row in 0..grid.height {
         for col in 0..grid.width {
-            for (dr, dc) in deltas {
-                if grid.get(row, col) == 'X'
-                    && grid.get(row + dr, col + dc) == 'M'
-                    && grid.get(row + 2 * dr, col + 2 * dc) == 'A'
-                    && grid.get(row + 3 * dr, col + 3 * dc) == 'S'
-                {
-                    result += 1;
+            for dr in -1..=1 {
+                for dc in -1..=1 {
+                    if grid.get(row, col) == 'X'
+                        && grid.get(row + dr, col + dc) == 'M'
+                        && grid.get(row + 2 * dr, col + 2 * dc) == 'A'
+                        && grid.get(row + 3 * dr, col + 3 * dc) == 'S'
+                    {
+                        result += 1;
+                    }
                 }
             }
         }
@@ -48,8 +40,8 @@ fn part2(input: &str) -> usize {
     let grid = Grid::new(input);
     let mut result = 0;
 
-    for row in 0..grid.height {
-        for col in 0..grid.width {
+    for row in 1..grid.height - 1 {
+        for col in 1..grid.width - 1 {
             if grid.get(row, col) == 'A'
                 && ((grid.get(row - 1, col - 1) == 'M' && grid.get(row + 1, col + 1) == 'S')
                     || (grid.get(row - 1, col - 1) == 'S' && grid.get(row + 1, col + 1) == 'M'))
