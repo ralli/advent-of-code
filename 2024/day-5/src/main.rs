@@ -5,6 +5,7 @@ use nom::character::complete::newline;
 use nom::multi::{many1, separated_list0, separated_list1};
 use nom::sequence::separated_pair;
 use nom::IResult;
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::fs;
 
@@ -60,35 +61,18 @@ fn part2(content: &str) -> anyhow::Result<u32> {
 
 fn sorted_pages(edge_set: &BTreeSet<Edge>, pages: &[u32]) -> Vec<u32> {
     let mut page_vec = pages.to_vec();
-    let size = pages.len();
-    for i in 0..size {
-        for j in i..size {
-            page_vec.swap(i, j);
-            if is_valid_page_position(edge_set, &page_vec, i) {
-                break;
-            }
+    page_vec.sort_unstable_by(|a, b| {
+        if edge_set.contains(&(*a, *b)) {
+            Ordering::Less
+        } else {
+            Ordering::Greater
         }
-    }
+    });
     page_vec
 }
 
 fn all_pages_sorted(edge_set: &BTreeSet<Edge>, pages: &[u32]) -> bool {
-    pages
-        .iter()
-        .enumerate()
-        .all(|(i, _)| is_valid_page_position(edge_set, pages, i))
-}
-
-fn is_valid_page_position(edge_set: &BTreeSet<Edge>, pages: &[u32], page_idx: usize) -> bool {
-    if pages.is_empty() {
-        return true;
-    }
-    let page = &pages[page_idx];
-    let succ = &pages[page_idx + 1..];
-    let pred = &pages[..page_idx];
-    let succ_ok = succ.iter().all(|next| edge_set.contains(&(*page, *next)));
-    let pred_ok = pred.iter().all(|r| edge_set.contains(&(*r, *page)));
-    pred_ok && succ_ok
+    pages.windows(2).all(|w| edge_set.contains(&(w[0], w[1])))
 }
 
 type Edge = (u32, u32);
