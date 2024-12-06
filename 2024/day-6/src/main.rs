@@ -1,8 +1,10 @@
+use anyhow::Context;
 use day_6::{count_guard_positions, count_obstructions, parse_grid};
 use std::fs;
 
 fn main() -> anyhow::Result<()> {
-    let content = fs::read_to_string("input.txt")?;
+    let filename = "day-6/input.txt";
+    let content = fs::read_to_string(filename).context(format!("cannot open {filename}"))?;
 
     let result = part1(&content)?;
     println!("{result}");
