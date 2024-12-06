@@ -38,16 +38,13 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     let positions = copy.positions;
     let count = positions
         .par_iter()
+        .filter(|p| p.row != grid.pos.row || p.col != grid.pos.col)
         .filter(|p| {
-            !(grid.is_occupied(p.row, p.col) || (p.row == grid.pos.row && p.col == grid.pos.col))
-        })
-        .filter(|p| {
-            let row_idx = p.row;
-            let col_idx = p.col;
             let mut copy = grid.clone();
-            copy.grid[row_idx as usize][col_idx as usize] = State::Occupied;
+            copy.grid[p.row as usize][p.col as usize] = State::Occupied;
             while copy.is_on_grid(copy.pos.row, copy.pos.col) {
                 if copy.step2() {
+                    // true means, step2 detected a loop
                     return true;
                 }
             }
