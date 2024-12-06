@@ -30,7 +30,6 @@ fn part1(input: &str) -> anyhow::Result<usize> {
 
 fn part2(input: &str) -> anyhow::Result<usize> {
     let grid = parse_grid(input)?;
-    let mut count = 0;
 
     let mut copy = grid.clone();
     while copy.is_on_grid(copy.pos.row, copy.pos.col) {
