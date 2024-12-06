@@ -7,8 +7,13 @@ use std::{fmt, fs};
 
 fn main() -> anyhow::Result<()> {
     let content = fs::read_to_string("day-6/input.txt")?;
+
     let result = part1(&content)?;
     println!("{result}");
+
+    let result = part2(&content)?;
+    println!("{result}");
+
     Ok(())
 }
 
@@ -16,15 +21,39 @@ fn part1(input: &str) -> anyhow::Result<usize> {
     let mut grid = parse_grid(input)?;
 
     while grid.is_on_grid(grid.pos.row, grid.pos.col) {
-        let (dr, dc) = grid.direction.delta();
-        if grid.is_occupied(grid.pos.row + dr, grid.pos.col + dc) {
-            grid.rotate_right()
-        } else {
-            grid.move_by(dr, dc);
-        }
+        grid.step();
     }
 
     Ok(grid.positions.len())
+}
+
+fn part2(input: &str) -> anyhow::Result<usize> {
+    let grid = parse_grid(input)?;
+    let mut count = 0;
+
+    let mut copy = grid.clone();
+    while copy.is_on_grid(copy.pos.row, copy.pos.col) {
+        copy.step();
+    }
+    let positions = copy.positions;
+    for pos in positions.iter() {
+        let row_idx = pos.row;
+        let col_idx = pos.col;
+        if grid.is_occupied(row_idx, col_idx)
+            || (row_idx == grid.pos.row && col_idx == grid.pos.col)
+        {
+            continue;
+        }
+        let mut copy = grid.clone();
+        copy.grid[row_idx as usize][col_idx as usize] = State::Occupied;
+        while copy.is_on_grid(copy.pos.row, copy.pos.col) {
+            if copy.step2() {
+                count += 1;
+                break;
+            }
+        }
+    }
+    Ok(count)
 }
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Eq, Ord)]
@@ -75,6 +104,7 @@ struct Grid {
     pos: Point,
     direction: Direction,
     positions: BTreeSet<Point>,
+    pos_directions: BTreeSet<(Point, Direction)>,
 }
 
 impl Grid {
@@ -91,11 +121,50 @@ impl Grid {
         self.pos.col += dc;
         if self.is_on_grid(self.pos.row, self.pos.col) {
             self.positions.insert(self.pos);
+            self.pos_directions.insert((self.pos, self.direction));
         }
     }
 
     fn rotate_right(&mut self) {
         self.direction = self.direction.rotated_right();
+    }
+
+    fn step(&mut self) -> bool {
+        let (dr, dc) = self.direction.delta();
+        let next_row = self.pos.row + dr;
+        let next_col = self.pos.col + dc;
+
+        if self.is_occupied(next_row, next_col) {
+            self.rotate_right()
+        } else {
+            self.move_by(dr, dc);
+        }
+
+        false
+    }
+
+    fn step2(&mut self) -> bool {
+        let (dr, dc) = self.direction.delta();
+        let next_row = self.pos.row + dr;
+        let next_col = self.pos.col + dc;
+
+        if self.pos_directions.contains(&(
+            Point {
+                row: next_row,
+                col: next_col,
+            },
+            self.direction,
+        )) {
+            return true;
+        }
+
+        if self.is_occupied(next_row, next_col) {
+            self.rotate_right()
+        } else {
+            self.move_by(dr, dc);
+        }
+
+        false
     }
 }
 
@@ -159,6 +228,7 @@ fn parse_grid(input: &str) -> anyhow::Result<Grid> {
         pos: start,
         direction: Direction::Up,
         positions: BTreeSet::from([start]),
+        pos_directions: BTreeSet::from([(start, Direction::Up)]),
     })
 }
 
@@ -169,6 +239,7 @@ fn parse_row(input: &str) -> IResult<&str, Vec<char>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_part1() -> anyhow::Result<()> {
         let input = r#"....#.....
@@ -183,6 +254,23 @@ mod tests {
 ......#..."#;
         let result = part1(input)?;
         assert_eq!(result, 41);
+        Ok(())
+    }
+
+    #[test]
+    fn test_part2() -> anyhow::Result<()> {
+        let input = r#"....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#..."#;
+        let result = part2(input)?;
+        assert_eq!(result, 6);
         Ok(())
     }
 }
