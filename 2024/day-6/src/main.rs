@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use nom::character::complete::{line_ending, one_of};
 use nom::multi::{many1, separated_list1};
 use nom::IResult;
+use rayon::prelude::*;
 use std::collections::BTreeSet;
 use std::{fmt, fs};
 
@@ -36,23 +37,24 @@ fn part2(input: &str) -> anyhow::Result<usize> {
         copy.step();
     }
     let positions = copy.positions;
-    for pos in positions.iter() {
-        let row_idx = pos.row;
-        let col_idx = pos.col;
-        if grid.is_occupied(row_idx, col_idx)
-            || (row_idx == grid.pos.row && col_idx == grid.pos.col)
-        {
-            continue;
-        }
-        let mut copy = grid.clone();
-        copy.grid[row_idx as usize][col_idx as usize] = State::Occupied;
-        while copy.is_on_grid(copy.pos.row, copy.pos.col) {
-            if copy.step2() {
-                count += 1;
-                break;
+    let count = positions
+        .par_iter()
+        .filter(|p| {
+            !(grid.is_occupied(p.row, p.col) || (p.row == grid.pos.row && p.col == grid.pos.col))
+        })
+        .filter(|p| {
+            let row_idx = p.row;
+            let col_idx = p.col;
+            let mut copy = grid.clone();
+            copy.grid[row_idx as usize][col_idx as usize] = State::Occupied;
+            while copy.is_on_grid(copy.pos.row, copy.pos.col) {
+                if copy.step2() {
+                    return true;
+                }
             }
-        }
-    }
+            false
+        })
+        .count();
     Ok(count)
 }
 
