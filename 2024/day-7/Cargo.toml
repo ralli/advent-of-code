@@ -1,0 +1,9 @@
+[package]
+name = "day-7"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.94"
+nom = "7.1.3"
+rayon = "1.10.0"
