@@ -5,8 +5,8 @@ use nom::character::complete::{line_ending, multispace0, space1};
 use nom::multi::separated_list0;
 use nom::sequence::{terminated, tuple};
 use nom::IResult;
-use std::fs;
 use rayon::prelude::*;
+use std::fs;
 
 fn main() -> anyhow::Result<()> {
     let filename = "day-7/input.txt";
@@ -77,14 +77,19 @@ fn has_solutions2(goal: i64, current: i64, values: &[i64]) -> bool {
 
     let first_value = *values.first().unwrap();
 
-    crate::has_solutions2(goal, current + first_value, &values[1..])
-        || crate::has_solutions2(goal, current * first_value, &values[1..])
+    has_solutions2(goal, current + first_value, &values[1..])
+        || has_solutions2(goal, current * first_value, &values[1..])
         || has_solutions2(goal, concatenate(current, first_value), &values[1..])
 }
 
 fn concatenate(x: i64, y: i64) -> i64 {
-    let s = format!("{x}{y}");
-    s.parse().unwrap()
+    let mut tmp = y;
+    let mut x = x;
+    while tmp > 0 {
+        x *= 10;
+        tmp /= 10;
+    }
+    x + y
 }
 
 fn parse_input(input: &str) -> IResult<&str, Vec<Equation>> {
