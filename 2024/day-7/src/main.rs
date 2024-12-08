@@ -21,24 +21,24 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn part1(input: &str) -> anyhow::Result<i64> {
+fn part1(input: &str) -> anyhow::Result<u64> {
     let (_, equations) = parse_input(input).map_err(|e| anyhow!("{e}"))?;
 
     let result = equations
         .par_iter()
-        .filter(|equation| has_solutions(equation.goal, 0, &equation.values))
+        .filter(|equation| has_solutions(equation.goal, &equation.values))
         .map(|equation| equation.goal)
         .sum();
 
     Ok(result)
 }
 
-fn part2(input: &str) -> anyhow::Result<i64> {
+fn part2(input: &str) -> anyhow::Result<u64> {
     let (_, equations) = parse_input(input).map_err(|e| anyhow!("{e}"))?;
 
     let result = equations
         .par_iter()
-        .filter(|equation| has_solutions2(equation.goal, 0, &equation.values))
+        .filter(|equation| has_solutions2(equation.goal, &equation.values))
         .map(|equation| equation.goal)
         .sum();
 
@@ -47,49 +47,71 @@ fn part2(input: &str) -> anyhow::Result<i64> {
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct Equation {
-    goal: i64,
-    values: Vec<i64>,
+    goal: u64,
+    values: Vec<u64>,
 }
 
-fn has_solutions(goal: i64, current: i64, values: &[i64]) -> bool {
+fn has_solutions(goal: u64, values: &[u64]) -> bool {
     if values.is_empty() {
-        return goal == current;
+        return goal == 0;
     }
 
-    if current > goal {
-        return false;
+    let (&last_value, rest) = values.split_last().unwrap();
+
+    if goal % last_value == 0 && has_solutions(goal / last_value, rest) {
+        return true;
     }
 
-    let first_value = *values.first().unwrap();
+    if goal >= last_value && has_solutions(goal - last_value, rest) {
+        return true;
+    }
 
-    crate::has_solutions(goal, current + first_value, &values[1..])
-        || crate::has_solutions(goal, current * first_value, &values[1..])
+    false
 }
 
-fn has_solutions2(goal: i64, current: i64, values: &[i64]) -> bool {
+fn has_solutions2(goal: u64, values: &[u64]) -> bool {
     if values.is_empty() {
-        return goal == current;
+        return goal == 0;
     }
 
-    if current > goal {
-        return false;
+    let (&last_value, rest) = values.split_last().unwrap();
+
+    if goal % last_value == 0 && has_solutions2(goal / last_value, rest) {
+        return true;
     }
 
-    let first_value = *values.first().unwrap();
+    if goal >= last_value && has_solutions2(goal - last_value, rest) {
+        return true;
+    }
 
-    has_solutions2(goal, current + first_value, &values[1..])
-        || has_solutions2(goal, current * first_value, &values[1..])
-        || has_solutions2(goal, concatenate(current, first_value), &values[1..])
+    if ends_with(goal, last_value) && has_solutions2(truncate(goal, last_value), rest) {
+        return true;
+    }
+
+    false
 }
 
-fn concatenate(x: i64, y: i64) -> i64 {
-    let mut tmp = y;
+fn ends_with(x: u64, y: u64) -> bool {
     let mut x = x;
-    while tmp > 0 {
-        x *= 10;
-        tmp /= 10;
+    let mut y = y;
+    while y > 0 {
+        if x % 10 != y % 10 {
+            return false;
+        }
+        x /= 10;
+        y /= 10;
     }
-    x + y
+    true
+}
+
+fn truncate(x: u64, y: u64) -> u64 {
+    let mut x = x;
+    let mut y = y;
+    while y > 0 {
+        x /= 10;
+        y /= 10;
+    }
+    x
 }
 
 fn parse_input(input: &str) -> IResult<&str, Vec<Equation>> {
@@ -101,9 +123,9 @@ fn parse_equation_list(input: &str) -> IResult<&str, Vec<Equation>> {
 }
 
 fn parse_equation(input: &str) -> IResult<&str, Equation> {
-    let (rest, goal) = complete::i64(input)?;
+    let (rest, goal) = complete::u64(input)?;
     let (rest, _) = tuple((tag(":"), space1))(rest)?;
-    let (rest, values) = separated_list0(space1, complete::i64)(rest)?;
+    let (rest, values) = separated_list0(space1, complete::u64)(rest)?;
     Ok((rest, Equation { goal, values }))
 }
 
@@ -126,11 +148,6 @@ mod test {
         let result = part1(INPUT)?;
         assert_eq!(result, 3749);
         Ok(())
-    }
-
-    #[test]
-    fn test_concatenate() {
-        assert_eq!(concatenate(15, 6), 156);
     }
 
     #[test]
