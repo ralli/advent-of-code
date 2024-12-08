@@ -1,5 +1,5 @@
 use anyhow::Context;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 
 fn main() -> anyhow::Result<()> {
@@ -15,36 +15,26 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
-struct Antenna {
-    row: isize,
-    col: isize,
-    freq: char,
-}
-
 #[derive(Debug, Clone)]
 struct Grid {
-    antennas: Vec<Antenna>,
+    antennas: BTreeMap<char, Vec<(isize, isize)>>,
     width: isize,
     height: isize,
 }
 
 fn part1(input: &str) -> anyhow::Result<usize> {
     let grid = parse_grid(input)?;
-    let freqs: BTreeSet<char> = grid.antennas.iter().map(|a| a.freq).collect();
     let mut positions: BTreeSet<(isize, isize)> = BTreeSet::new();
-    for freq in freqs.iter() {
-        let freq_antennas: Vec<_> = grid.antennas.iter().filter(|a| a.freq == *freq).collect();
-        for (i, a1) in freq_antennas.iter().enumerate() {
-            for (j, a2) in freq_antennas.iter().enumerate() {
+    for freq_antennas in grid.antennas.values() {
+        for (i, (row1, col1)) in freq_antennas.iter().enumerate() {
+            for (j, (row2, col2)) in freq_antennas.iter().enumerate() {
                 if i != j {
-                    let dr = a2.row - a1.row;
-                    let dc = a2.col - a1.col;
-                    let r = a1.row + dr * 2;
-                    let c = a1.col + dc * 2;
+                    let dr = row2 - row1;
+                    let dc = col2 - col1;
+                    let r = row1 + dr * 2;
+                    let c = col1 + dc * 2;
                     if 0 <= r && grid.height > r && 0 <= c && grid.width > c {
                         positions.insert((r, c));
-                        // println!("{:?}", (r, c, freq));
                     }
                 }
             }
@@ -55,22 +45,19 @@ fn part1(input: &str) -> anyhow::Result<usize> {
 
 fn part2(input: &str) -> anyhow::Result<usize> {
     let grid = parse_grid(input)?;
-    let freqs: BTreeSet<char> = grid.antennas.iter().map(|a| a.freq).collect();
     let mut positions: BTreeSet<(isize, isize)> = BTreeSet::new();
-    for freq in freqs.iter() {
-        let freq_antennas: Vec<_> = grid.antennas.iter().filter(|a| a.freq == *freq).collect();
-        for (i, a1) in freq_antennas.iter().enumerate() {
-            for (j, a2) in freq_antennas.iter().enumerate() {
+    for freq_antennas in grid.antennas.values() {
+        for (i, (row1, col1)) in freq_antennas.iter().enumerate() {
+            for (j, (row2, col2)) in freq_antennas.iter().enumerate() {
                 if i != j {
-                    let dr = a2.row - a1.row;
-                    let dc = a2.col - a1.col;
-                    let mut r = a1.row + dr;
-                    let mut c = a1.col + dc;
+                    let dr = row2 - row1;
+                    let dc = col2 - col1;
+                    let mut r = row1 + dr;
+                    let mut c = col1 + dc;
                     while 0 <= r && grid.height > r && 0 <= c && grid.width > c {
                         positions.insert((r, c));
                         r += dr;
                         c += dc;
-                        // println!("{:?}", (r, c, freq));
                     }
                 }
             }
@@ -80,17 +67,14 @@ fn part2(input: &str) -> anyhow::Result<usize> {
 }
 
 fn parse_grid(input: &str) -> anyhow::Result<Grid> {
-    let mut antennas = Vec::new();
+    let mut antennas: BTreeMap<char, Vec<(isize, isize)>> = BTreeMap::new();
     let mut height = 0;
     let mut width = 0;
     for (row, line) in input.lines().enumerate() {
         for (col, c) in line.chars().enumerate() {
             if c.is_alphanumeric() {
-                antennas.push(Antenna {
-                    row: row as isize,
-                    col: col as isize,
-                    freq: c,
-                })
+                let e = antennas.entry(c).or_default();
+                e.push((row as isize, col as isize));
             }
         }
         if line.chars().any(|c| c == '.' || c.is_alphanumeric()) {
@@ -133,7 +117,6 @@ mod tests {
 ..........
 ....#.....
 .........."#;
-
 
     #[test]
     fn test_part1() -> anyhow::Result<()> {
