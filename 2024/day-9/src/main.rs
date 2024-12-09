@@ -32,21 +32,34 @@ fn part1(input: &str) -> anyhow::Result<usize> {
         }
     }
 
-    let mut check_sum = 0;
+    if blocks.is_empty() {
+        return Ok(0);
+    }
+
     let mut l = 0;
-    let mut r = blocks.len() - 1;
+    let size = blocks.len();
+    let mut r = size - 1;
 
     while l < r {
-        while blocks[l] >= 0 {
-            check_sum += (blocks[l] as usize) * l;
+        while blocks[l] >= 0 && l < size - 1 {
             l += 1;
         }
-        while blocks[r] < 0 {
+
+        while blocks[r] < 0 && r > 0 {
             r -= 1;
         }
-        blocks[l] = blocks[r];
-        blocks[r] = -1;
+
+        if l < r {
+            blocks[l] = blocks[r];
+            blocks[r] = -1;
+        }
     }
+
+    let check_sum: usize = blocks
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &b)| if b >= 0 { Some(i * b as usize) } else { None })
+        .sum();
 
     Ok(check_sum)
 }
@@ -87,16 +100,16 @@ fn part2(input: &str) -> anyhow::Result<usize> {
         }
     }
 
-    for f in file_infos.iter_mut().rev() {
-        let x = blocks[f.start];
-        for s in free_infos.iter_mut() {
-            if s.len >= f.len && s.start < f.start {
-                for _ in 0..f.len {
-                    blocks[s.start] = x;
-                    blocks[f.start] = -1;
-                    s.start += 1;
-                    s.len -= 1;
-                    f.start += 1;
+    for file_info in file_infos.iter_mut().rev() {
+        let x = blocks[file_info.start];
+        for free_info in free_infos.iter_mut() {
+            if free_info.len >= file_info.len && free_info.start < file_info.start {
+                for _ in 0..file_info.len {
+                    blocks[free_info.start] = x;
+                    blocks[file_info.start] = -1;
+                    free_info.start += 1;
+                    free_info.len -= 1;
+                    file_info.start += 1;
                 }
                 break;
             }
