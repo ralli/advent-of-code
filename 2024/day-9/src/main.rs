@@ -101,17 +101,18 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     }
 
     for file_info in file_infos.iter_mut().rev() {
-        let x = blocks[file_info.start];
-        for free_info in free_infos.iter_mut() {
-            if free_info.len >= file_info.len && free_info.start < file_info.start {
-                for _ in 0..file_info.len {
-                    blocks[free_info.start] = x;
-                    blocks[file_info.start] = -1;
-                    free_info.start += 1;
-                    free_info.len -= 1;
-                    file_info.start += 1;
-                }
-                break;
+        if let Some(free_info) = free_infos
+            .iter_mut()
+            .take_while(|free_info| free_info.start < file_info.start)
+            .find(|free_info| free_info.len >= file_info.len)
+        {
+            let x = blocks[file_info.start];
+            for _ in 0..file_info.len {
+                blocks[free_info.start] = x;
+                blocks[file_info.start] = -1;
+                free_info.start += 1;
+                free_info.len -= 1;
+                file_info.start += 1;
             }
         }
     }
