@@ -74,10 +74,13 @@ fn walk_grid2(grid: &Grid) -> usize {
 fn walk_grid_from_start(grid: &Grid, start_row: isize, start_col: isize) -> usize {
     let mut q = VecDeque::from([(start_row, start_col, 0)]);
     let mut visited: BTreeSet<(isize, isize)> = BTreeSet::new();
-
+    let mut result = 0;
     while let Some((row, col, height)) = q.pop_front() {
+        if !visited.insert((row, col)) {
+            continue;
+        }
         if height == 9 {
-            visited.insert((row, col));
+            result += 1;
         }
         for (dr, dc) in DIRS.iter() {
             let (next_row, next_col) = (row + dr, col + dc);
@@ -86,26 +89,53 @@ fn walk_grid_from_start(grid: &Grid, start_row: isize, start_col: isize) -> usiz
             }
         }
     }
-    visited.len()
+    result
 }
 
+///
+/// Solution as suggested by hyperneutrino here:
+///
+///     - https://www.youtube.com/watch?v=layyhtQQuM0
+///     - https:///github.com/hyperneutrino/advent-of-code/blob/main/2024/day10p2.py
+///
+/// should be much more efficient (`O(|V|+|E|)`?) than my original solution, since the number
+/// of paths grows exponentially. Does not really make a difference for the current problem.
+///
 fn walk_grid_from_start2(grid: &Grid, start_row: isize, start_col: isize) -> usize {
     let mut q = VecDeque::from([(start_row, start_col, 0)]);
-    let mut counts: BTreeMap<(isize, isize), usize> = BTreeMap::new();
+    let mut seen: BTreeMap<(isize, isize), usize> = BTreeMap::from([((start_row, start_col), 1)]);
+    let mut result = 0;
 
     while let Some((row, col, height)) = q.pop_front() {
+        let count = *seen.get(&(row, col)).unwrap();
         if height == 9 {
-            let entry = counts.entry((row, col)).or_insert(0);
-            *entry += 1;
+            result += count;
+            continue;
         }
         for (dr, dc) in DIRS.iter() {
             let (next_row, next_col) = (row + dr, col + dc);
-            if grid.get(next_row, next_col) == height + 1 {
-                q.push_back((next_row, next_col, height + 1));
+            let next_height = grid.get(next_row, next_col);
+            if height + 1 != next_height {
+                continue;
             }
+            let entry = seen.entry((next_row, next_col)).or_insert(0);
+            if *entry > 0 {
+                //
+                // next position has already been visited
+                // that means, we can add the number of paths to the current position
+                // position
+                //
+                *entry += count;
+                continue;
+            }
+            // not been visited, yet => the number of paths to the next position
+            // is the number of paths to the current position
+            //
+            *entry = count;
+            q.push_back((next_row, next_col, next_height));
         }
     }
-    counts.values().sum()
+    result
 }
 
 fn parse_grid(input: &str) -> Grid {
