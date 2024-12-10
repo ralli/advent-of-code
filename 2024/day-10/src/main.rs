@@ -1,9 +1,30 @@
-use std::collections::{BTreeMap, VecDeque};
-use std::fmt;
-use std::fmt::Formatter;
+use anyhow::Context;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::fs;
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> anyhow::Result<()> {
+    let filename = "day-10/input.txt";
+    let content = fs::read_to_string(filename).context(format!("cannot load {filename}"))?;
+
+    let result = part1(&content)?;
+    println!("{result}");
+
+    let result = part2(&content)?;
+    println!("{result}");
+
+    Ok(())
+}
+
+fn part1(input: &str) -> Result<usize, anyhow::Error> {
+    let grid = parse_grid(input);
+    let result = walk_grid(&grid);
+    Ok(result)
+}
+
+fn part2(input: &str) -> Result<usize, anyhow::Error> {
+    let grid = parse_grid(input);
+    let result = walk_grid2(&grid);
+    Ok(result)
 }
 
 #[derive(Debug)]
@@ -22,40 +43,59 @@ impl Grid {
     }
 }
 
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        for row in 0..self.height {
-            for col in 0..self.width {
-                let n = self.get(row, col);
-                if n < 0 {
-                    write!(f, ".")?;
-                } else {
-                    write!(f, "{n}")?;
-                }
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
 const DIRS: [(isize, isize); 4] = [(0, -1), (0, 1), (-1, 0), (1, 0)];
 
-fn walk_grid(grid: &Grid) -> BTreeMap<(isize, isize), usize> {
-    let mut scores = BTreeMap::new();
-    let mut q = VecDeque::new();
-
+fn walk_grid(grid: &Grid) -> usize {
+    let mut result = 0;
     for row in 0..grid.height {
         for col in 0..grid.width {
             if grid.get(row, col) == 0 {
-                q.push_back((row, col, 0));
+                let count = walk_grid_from_start(grid, row, col);
+                result += count;
             }
         }
     }
-    println!("{:?}", q);
+    result
+}
+
+fn walk_grid2(grid: &Grid) -> usize {
+    let mut result = 0;
+    for row in 0..grid.height {
+        for col in 0..grid.width {
+            if grid.get(row, col) == 0 {
+                let count = walk_grid_from_start2(grid, row, col);
+                result += count;
+            }
+        }
+    }
+    result
+}
+
+fn walk_grid_from_start(grid: &Grid, start_row: isize, start_col: isize) -> usize {
+    let mut q = VecDeque::from([(start_row, start_col, 0)]);
+    let mut visited: BTreeSet<(isize, isize)> = BTreeSet::new();
+
     while let Some((row, col, height)) = q.pop_front() {
         if height == 9 {
-            let entry = scores.entry((row, col)).or_default();
+            visited.insert((row, col));
+        }
+        for (dr, dc) in DIRS.iter() {
+            let (next_row, next_col) = (row + dr, col + dc);
+            if grid.get(next_row, next_col) == height + 1 {
+                q.push_back((next_row, next_col, height + 1));
+            }
+        }
+    }
+    visited.len()
+}
+
+fn walk_grid_from_start2(grid: &Grid, start_row: isize, start_col: isize) -> usize {
+    let mut q = VecDeque::from([(start_row, start_col, 0)]);
+    let mut counts: BTreeMap<(isize, isize), usize> = BTreeMap::new();
+
+    while let Some((row, col, height)) = q.pop_front() {
+        if height == 9 {
+            let entry = counts.entry((row, col)).or_insert(0);
             *entry += 1;
         }
         for (dr, dc) in DIRS.iter() {
@@ -64,9 +104,8 @@ fn walk_grid(grid: &Grid) -> BTreeMap<(isize, isize), usize> {
                 q.push_back((next_row, next_col, height + 1));
             }
         }
-        println!("{:?} {:?}", (row, col, height), q);
     }
-    scores
+    counts.values().sum()
 }
 
 fn parse_grid(input: &str) -> Grid {
@@ -96,15 +135,7 @@ fn parse_grid(input: &str) -> Grid {
 
 #[cfg(test)]
 mod tests {
-    use crate::{parse_grid, walk_grid};
-
-    const INPUT: &str = r#"10..9..
-2...8..
-3...7..
-4567654
-...8..3
-...9..2
-.....01"#;
+    use super::*;
 
     const INPUT2: &str = r#"89010123
 78121874
@@ -114,11 +145,16 @@ mod tests {
 32019012
 01329801
 10456732"#;
+
     #[test]
-    fn test_parse_grid() {
-        let grid = parse_grid(INPUT2);
-        println!("{}", grid);
-        let scores = walk_grid(&grid);
-        println!("{scores:#?}");
+    fn test_part1() {
+        let result = part1(INPUT2).unwrap();
+        assert_eq!(result, 36);
+    }
+
+    #[test]
+    fn test_part2() {
+        let result = part2(INPUT2).unwrap();
+        assert_eq!(result, 81);
     }
 }
