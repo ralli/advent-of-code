@@ -170,7 +170,7 @@ impl fmt::Display for Grid {
                 };
                 write!(f, "{}", c)?;
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }
@@ -206,7 +206,7 @@ pub fn parse_grid(input: &str) -> anyhow::Result<Grid> {
     Ok(Grid {
         width: grid[0].len() as isize,
         height: grid.len() as isize,
-        grid: grid,
+        grid,
         pos: start,
         direction: Direction::Up,
         positions: HashSet::from([start]),

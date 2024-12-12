@@ -143,7 +143,7 @@ fn parse_grid(input: &str) -> Grid {
         .lines()
         .map(|line| {
             line.chars()
-                .filter(|c| c.is_digit(10) || *c == '.')
+                .filter(|c| c.is_ascii_digit() || *c == '.')
                 .map(|c| {
                     if c == '.' {
                         -1
@@ -154,7 +154,7 @@ fn parse_grid(input: &str) -> Grid {
                 .collect()
         })
         .collect();
-    let width = grid.iter().next().map(|r| r.len()).unwrap_or_default() as isize;
+    let width = grid.first().map(|r| r.len()).unwrap_or_default() as isize;
     let height = grid.len() as isize;
     Grid {
         width,

@@ -46,24 +46,24 @@ fn part2(input: &str) -> anyhow::Result<i32> {
 }
 
 enum State {
-    RESET,
+    Reset,
     M,
-    MU,
-    MUL,
-    NUM1,
-    NUM2,
+    Mu,
+    Mul,
+    Num1,
+    Num2,
     D,
-    DO,
+    Do,
     DoParOpen,
-    DON,
-    DON2, // DON'
-    DONT,
+    Don,
+    Don2, // DON'
+    Dont,
     DontParOpen,
 }
 
 // Implementation as state machine. Found something similar on reddit.
 fn state_machine(input: &str) -> anyhow::Result<(i32, i32)> {
-    let mut current_state = State::RESET;
+    let mut current_state = State::Reset;
     let mut count1 = 0;
     let mut count2 = 0;
     let mut num1 = 0;
@@ -72,48 +72,48 @@ fn state_machine(input: &str) -> anyhow::Result<(i32, i32)> {
 
     for c in input.chars() {
         match (&current_state, c) {
-            (State::RESET, 'm') => current_state = State::M,
-            (State::M, 'u') => current_state = State::MU,
-            (State::MU, 'l') => current_state = State::MUL,
-            (State::MUL, '(') => {
-                current_state = State::NUM1;
+            (State::Reset, 'm') => current_state = State::M,
+            (State::M, 'u') => current_state = State::Mu,
+            (State::Mu, 'l') => current_state = State::Mul,
+            (State::Mul, '(') => {
+                current_state = State::Num1;
                 num1 = 0;
             }
-            (State::NUM1, c) if c.is_ascii_digit() => {
+            (State::Num1, c) if c.is_ascii_digit() => {
                 num1 *= 10;
                 num1 += c.to_digit(10).unwrap() as i32;
             }
-            (State::NUM1, ',') => {
-                current_state = State::NUM2;
+            (State::Num1, ',') => {
+                current_state = State::Num2;
                 num2 = 0;
             }
-            (State::NUM2, c) if c.is_ascii_digit() => {
+            (State::Num2, c) if c.is_ascii_digit() => {
                 num2 *= 10;
                 num2 += c.to_digit(10).unwrap() as i32;
             }
-            (State::NUM2, ')') => {
-                current_state = State::RESET;
+            (State::Num2, ')') => {
+                current_state = State::Reset;
                 count1 += num1 * num2;
                 if active {
                     count2 += num1 * num2;
                 }
             }
-            (State::RESET, 'd') => current_state = State::D,
-            (State::D, 'o') => current_state = State::DO,
-            (State::DO, 'n') => current_state = State::DON,
-            (State::DON, '\'') => current_state = State::DON2,
-            (State::DON2, 't') => current_state = State::DONT,
-            (State::DONT, '(') => current_state = State::DontParOpen,
+            (State::Reset, 'd') => current_state = State::D,
+            (State::D, 'o') => current_state = State::Do,
+            (State::Do, 'n') => current_state = State::Don,
+            (State::Don, '\'') => current_state = State::Don2,
+            (State::Don2, 't') => current_state = State::Dont,
+            (State::Dont, '(') => current_state = State::DontParOpen,
             (State::DontParOpen, ')') => {
-                current_state = State::RESET;
+                current_state = State::Reset;
                 active = false;
             }
-            (State::DO, '(') => current_state = State::DoParOpen,
+            (State::Do, '(') => current_state = State::DoParOpen,
             (State::DoParOpen, ')') => {
-                current_state = State::RESET;
+                current_state = State::Reset;
                 active = true;
             }
-            _ => current_state = State::RESET,
+            _ => current_state = State::Reset,
         }
     }
 

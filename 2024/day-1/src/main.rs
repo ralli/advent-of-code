@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part1(input: &str) -> anyhow::Result<i64> {
-    let (mut list1, mut list2) = parse_input(&input)?;
+    let (mut list1, mut list2) = parse_input(input)?;
     list1.sort();
     list2.sort();
     Ok(list1
@@ -32,7 +32,7 @@ fn part1(input: &str) -> anyhow::Result<i64> {
 }
 
 fn part2(input: &str) -> anyhow::Result<i64> {
-    let (list1, list2) = parse_input(&input)?;
+    let (list1, list2) = parse_input(input)?;
     let hist2: BTreeMap<i64, i64> = list2.iter().fold(BTreeMap::new(), |mut m, n| {
         let e = m.entry(*n).or_insert(0);
         *e += 1;

@@ -47,7 +47,7 @@ fn get_stone_count(numbers: &[i64], n: i64) -> usize {
             return 1;
         }
 
-        if let Some(y) = cache.get(&((x, n))) {
+        if let Some(y) = cache.get(&(x, n)) {
             return *y;
         }
 

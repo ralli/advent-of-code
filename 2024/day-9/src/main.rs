@@ -129,7 +129,7 @@ fn part2(input: &str) -> anyhow::Result<usize> {
 fn parse_input(input: &str) -> Vec<i8> {
     input
         .chars()
-        .filter(|c| c.is_digit(10))
+        .filter(|c| c.is_ascii_digit())
         .map(|c| c.to_digit(10).unwrap() as i8)
         .collect()
 }

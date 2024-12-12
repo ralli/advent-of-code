@@ -21,13 +21,13 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(input: &str) -> anyhow::Result<usize> {
     let reports = parse_input(input)?;
-    let result = reports.iter().filter(|report| is_safe(&report)).count();
+    let result = reports.iter().filter(|report| is_safe(report)).count();
     Ok(result)
 }
 
 fn part2(input: &str) -> anyhow::Result<usize> {
     let reports = parse_input(input)?;
-    let result = reports.iter().filter(|report| is_safe2(&report)).count();
+    let result = reports.iter().filter(|report| is_safe2(report)).count();
     Ok(result)
 }
 
@@ -36,10 +36,9 @@ fn is_safe(arr: &[i32]) -> bool {
     let all_decreasing = arr.windows(2).all(|w| w[0] > w[1]);
     let in_range = arr.windows(2).all(|w| {
         let diff = (w[0] - w[1]).abs();
-        1 <= diff && diff <= 3
+        (1..=3).contains(&diff)
     });
-    let result = (all_increasing || all_decreasing) && in_range;
-    result
+    (all_increasing || all_decreasing) && in_range
 }
 
 fn is_safe2(arr: &[i32]) -> bool {
@@ -50,7 +49,7 @@ fn is_safe2(arr: &[i32]) -> bool {
             return true;
         }
     }
-    return false;
+    false
 }
 
 fn parse_input(input: &str) -> anyhow::Result<Vec<Vec<i32>>> {
