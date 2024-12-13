@@ -67,6 +67,25 @@ enum Side {
     Bottom,
     Left,
 }
+
+impl Side {
+    fn direction(&self) -> Position {
+        match self {
+            Side::Top => (-1, 0),
+            Side::Right => (0, 1),
+            Side::Bottom => (1, 0),
+            Side::Left => (0, -1),
+        }
+    }
+
+    fn edge_direction(&self) -> Position {
+        match self {
+            Side::Top | Side::Bottom => (0, 1),
+            Side::Left | Side::Right => (1, 0),
+        }
+    }
+}
+
 type PositionAndSide = (isize, isize, Side);
 
 #[derive(Debug)]
@@ -144,124 +163,49 @@ fn area_and_perimiter2(
                 q.push_back((next_row, next_col));
             }
         }
-        perimeter += visit_top_edge(grid, row, col, &mut visited_edges);
-        perimeter += visit_right_edge(grid, row, col, &mut visited_edges);
-        perimeter += visit_bottom_edge(grid, row, col, &mut visited_edges);
-        perimeter += visit_left_edge(grid, row, col, &mut visited_edges);
+        perimeter += visit_edge(grid, row, col, Side::Top, &mut visited_edges);
+        perimeter += visit_edge(grid, row, col, Side::Right, &mut visited_edges);
+        perimeter += visit_edge(grid, row, col, Side::Bottom, &mut visited_edges);
+        perimeter += visit_edge(grid, row, col, Side::Left, &mut visited_edges);
     }
     (area, perimeter)
 }
 
-fn visit_top_edge(
+fn visit_edge(
     grid: &Grid,
     start_row: isize,
     start_col: isize,
+    side: Side,
     visited_edges: &mut BTreeSet<PositionAndSide>,
 ) -> usize {
+    let (side_dr, side_dc) = side.direction();
     let plant_type = grid.get(start_row, start_col);
-    if grid.get(start_row - 1, start_col) == plant_type {
-        return 0;
-    }
-    let result = if !visited_edges.contains(&(start_row, start_col, Side::Top)) {
-        1
-    } else {
-        0
-    };
-    let (row, mut col) = (start_row, start_col);
-    while grid.get(row, col) == plant_type && grid.get(row - 1, col) != plant_type {
-        visited_edges.insert((row, col, Side::Top));
-        col -= 1;
-    }
-    col = start_col;
-    while grid.get(row, col) == plant_type && grid.get(row - 1, col) != plant_type {
-        visited_edges.insert((row, col, Side::Top));
-        col += 1;
-    }
-    result
-}
 
-fn visit_bottom_edge(
-    grid: &Grid,
-    start_row: isize,
-    start_col: isize,
-    visited_edges: &mut BTreeSet<PositionAndSide>,
-) -> usize {
-    let plant_type = grid.get(start_row, start_col);
-    if grid.get(start_row + 1, start_col) == plant_type {
+    if grid.get(start_row + side_dr, start_col + side_dc) == plant_type {
         return 0;
     }
-    let result = if !visited_edges.contains(&(start_row, start_col, Side::Bottom)) {
-        1
-    } else {
-        0
-    };
-    let (row, mut col) = (start_row, start_col);
-    while grid.get(row, col) == plant_type && grid.get(row + 1, col) != plant_type {
-        visited_edges.insert((row, col, Side::Bottom));
-        col -= 1;
-    }
-    col = start_col;
-    while grid.get(row, col) == plant_type && grid.get(row + 1, col) != plant_type {
-        visited_edges.insert((row, col, Side::Bottom));
-        col += 1;
-    }
-    result
-}
 
-fn visit_left_edge(
-    grid: &Grid,
-    start_row: isize,
-    start_col: isize,
-    visited_edges: &mut BTreeSet<PositionAndSide>,
-) -> usize {
-    let plant_type = grid.get(start_row, start_col);
-    if grid.get(start_row, start_col - 1) == plant_type {
+    if visited_edges.contains(&(start_row, start_col, side)) {
         return 0;
-    }
-    let result = if !visited_edges.contains(&(start_row, start_col, Side::Left)) {
-        1
-    } else {
-        0
     };
-    let (mut row, col) = (start_row, start_col);
-    while grid.get(row, col) == plant_type && grid.get(row, col - 1) != plant_type {
-        visited_edges.insert((row, col, Side::Left));
-        row -= 1;
-    }
-    row = start_row;
-    while grid.get(row, col) == plant_type && grid.get(row, col - 1) != plant_type {
-        visited_edges.insert((row, col, Side::Left));
-        row += 1;
-    }
-    result
-}
 
-fn visit_right_edge(
-    grid: &Grid,
-    start_row: isize,
-    start_col: isize,
-    visited_edges: &mut BTreeSet<PositionAndSide>,
-) -> usize {
-    let plant_type = grid.get(start_row, start_col);
-    if grid.get(start_row, start_col + 1) == plant_type {
-        return 0;
+    let (dr, dc) = side.edge_direction();
+
+    let (mut row, mut col) = (start_row, start_col);
+    while grid.get(row, col) == plant_type && grid.get(row + side_dr, col + side_dc) != plant_type {
+        visited_edges.insert((row, col, side));
+        row += dr;
+        col += dc;
     }
-    let result = if !visited_edges.contains(&(start_row, start_col, Side::Right)) {
-        1
-    } else {
-        0
-    };
-    let (mut row, col) = (start_row, start_col);
-    while grid.get(row, col) == plant_type && grid.get(row, col + 1) != plant_type {
-        visited_edges.insert((row, col, Side::Right));
-        row -= 1;
+
+    let (mut row, mut col) = (start_row, start_col);
+    while grid.get(row, col) == plant_type && grid.get(row + side_dr, col + side_dc) != plant_type {
+        visited_edges.insert((row, col, side));
+        row -= dr;
+        col -= dc;
     }
-    row = start_row;
-    while grid.get(row, col) == plant_type && grid.get(row, col + 1) != plant_type {
-        visited_edges.insert((row, col, Side::Right));
-        row += 1;
-    }
-    result
+
+    1
 }
 
 fn parse_grid(input: &str) -> anyhow::Result<Grid> {
