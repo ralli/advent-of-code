@@ -12,6 +12,10 @@ fn main() -> anyhow::Result<()> {
     let (width, height) = (101, 103);
     let result = part1(&input, width, height)?;
     println!("{result}");
+
+    let result = part2(&input, width, height)?;
+    println!("{result}");
+
     Ok(())
 }
 
@@ -39,8 +43,8 @@ fn part1(input: &str, width: i64, height: i64) -> anyhow::Result<i64> {
         let (x, y) = robot.p;
         let (dx, dy) = robot.v;
         let np = (
-            coordinate_after_steps(x, dx, steps, width),
-            coordinate_after_steps(y, dy, steps, height),
+            (x + dx * steps).rem_euclid(bathroom.width),
+            (y + dy * steps).rem_euclid(bathroom.height),
         );
         let quadrant_attempt = point_quadrant(np, width, height);
         if let Some(quadrant) = quadrant_attempt {
@@ -51,6 +55,63 @@ fn part1(input: &str, width: i64, height: i64) -> anyhow::Result<i64> {
     Ok(quadrants.iter().product::<i64>())
 }
 
+fn part2(input: &str, width: i64, height: i64) -> anyhow::Result<i64> {
+    let (_, bathroom) = parse_bathroom(input, width, height).map_err(|e| anyhow!("{e}"))?;
+    let mut min_sf = usize::MAX;
+    let mut min_round = -1;
+    let max_steps = width * height;
+
+    for steps in 1..=max_steps {
+        let mut grid = vec![false; (width * height) as usize];
+        for robot in bathroom.robots.iter() {
+            let (x, y) = robot.p;
+            let (dx, dy) = robot.v;
+            let (x, y) = (
+                (x + dx * steps).rem_euclid(bathroom.width),
+                (y + dy * steps).rem_euclid(bathroom.height),
+            );
+            grid[(y * width + x) as usize] = true;
+        }
+        let sf = grid.iter().filter(|&x| !x).count();
+        if sf < min_sf {
+            min_sf = sf;
+            min_round = steps;
+        }
+    }
+    #[cfg(test)]
+    print_state(&bathroom, min_round);
+    Ok(min_round)
+}
+
+#[cfg(test)]
+fn print_state(bathroom: &Bathroom, steps: i64) {
+    let mut grid = vec![false; (bathroom.width * bathroom.height) as usize];
+    for robot in bathroom.robots.iter() {
+        let (x, y) = robot.p;
+        let (dx, dy) = robot.v;
+        let (x, y) = (
+            (x + dx * steps).rem_euclid(bathroom.width),
+            (y + dy * steps).rem_euclid(bathroom.height),
+        );
+        grid[(y * bathroom.width + x) as usize] = true;
+    }
+    print_grid(&grid, bathroom.width, bathroom.height);
+}
+
+#[cfg(test)]
+fn print_grid(grid: &[bool], width: i64, height: i64) {
+    for y in 0..height {
+        for x in 0..width {
+            let c = if grid[(y * width + x) as usize] {
+                '*'
+            } else {
+                '.'
+            };
+            print!("{}", c);
+        }
+        println!();
+    }
+}
 fn parse_bathroom(input: &str, width: i64, height: i64) -> IResult<&str, Bathroom> {
     let (rest, robots) = separated_list0(line_ending, parse_robot)(input)?;
     Ok((
@@ -74,18 +135,6 @@ fn parse_robot(input: &str) -> IResult<&str, Robot> {
 
 fn parse_point(input: &str) -> IResult<&str, Point> {
     separated_pair(complete::i64, complete::char(','), complete::i64)(input)
-}
-
-fn coordinate_after_steps(c: i64, delta: i64, steps: i64, length: i64) -> i64 {
-    if delta == 0 {
-        return c;
-    }
-    if delta > 0 {
-        return (c + delta * steps) % length;
-    }
-    let start = (length - 1) - c;
-    let end = (start + delta.abs() * steps) % length;
-    length - 1 - end
 }
 
 fn point_quadrant(p: Point, width: i64, height: i64) -> Option<i64> {
@@ -118,15 +167,6 @@ mod tests {
     use super::*;
     use anyhow::anyhow;
 
-    #[test]
-    fn test_coordinate_after_steps() {
-        assert_eq!(coordinate_after_steps(4, 1, 1, 5), 0);
-        assert_eq!(coordinate_after_steps(4, 1, 6, 5), 0);
-        assert_eq!(coordinate_after_steps(0, -1, 1, 5), 4);
-        assert_eq!(coordinate_after_steps(0, -1, 5, 5), 0);
-        assert_eq!(coordinate_after_steps(0, -1, 50, 5), 0);
-    }
-
     const INPUT: &str = r#"p=0,4 v=3,-3
 p=6,3 v=-1,-3
 p=10,3 v=-1,2
@@ -152,6 +192,13 @@ p=9,5 v=-3,-3"#;
     fn part1_works() -> anyhow::Result<()> {
         let result = part1(INPUT, 11, 7)?;
         assert_eq!(result, 12);
+        Ok(())
+    }
+
+    #[test]
+    fn part2_works() -> anyhow::Result<()> {
+        let result = part2(INPUT, 11, 7)?;
+        assert_eq!(result, 1);
         Ok(())
     }
 
