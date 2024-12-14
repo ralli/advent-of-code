@@ -32,7 +32,7 @@ struct Bathroom {
 
 fn part1(input: &str, width: i64, height: i64) -> anyhow::Result<i64> {
     let steps = 100;
-    let (rest, bathroom) = parse_bathroom(input, width, height).map_err(|e| anyhow!("{e}"))?;
+    let (_, bathroom) = parse_bathroom(input, width, height).map_err(|e| anyhow!("{e}"))?;
     let mut quadrants = vec![0; 4];
 
     for robot in bathroom.robots.iter() {
