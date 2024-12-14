@@ -57,8 +57,6 @@ fn part1(input: &str, width: i64, height: i64) -> anyhow::Result<i64> {
 
 fn part2(input: &str, width: i64, height: i64) -> anyhow::Result<i64> {
     let (_, bathroom) = parse_bathroom(input, width, height).map_err(|e| anyhow!("{e}"))?;
-    let mut min_sf = usize::MAX;
-    let mut min_round = -1;
     let max_steps = width * height;
 
     for steps in 1..=max_steps {
@@ -72,15 +70,24 @@ fn part2(input: &str, width: i64, height: i64) -> anyhow::Result<i64> {
             );
             grid[(y * width + x) as usize] = true;
         }
-        let sf = grid.iter().filter(|&x| !x).count();
-        if sf < min_sf {
-            min_sf = sf;
-            min_round = steps;
+        // heuristic: If there are more than 20 pixels set in a row
+        // this must be the Christmas tree
+        let mut count = 0;
+        for value in grid.iter() {
+            if *value {
+                count += 1;
+                if count > 20 {
+                    #[cfg(test)]
+                    print_state(&bathroom, steps);
+                    return Ok(steps);
+                }
+            } else {
+                count = 0;
+            }
         }
     }
-    #[cfg(test)]
-    print_state(&bathroom, min_round);
-    Ok(min_round)
+    // Ok(min_round)
+    Err(anyhow!("No solution found"))
 }
 
 #[cfg(test)]
