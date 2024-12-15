@@ -87,20 +87,17 @@ fn perform_move2(command: char, start_row: isize, start_col: isize, grid: &mut G
             return false;
         }
         if c == '[' && dr != 0 {
-            moves.push((row, col + 1, c, true));
+            moves.push((row, col + 1, '.'));
             q.push_back((row, col + 1));
         } else if c == ']' && dr != 0 {
-            moves.push((row, col - 1, c, true));
+            moves.push((row, col - 1, '.'));
             q.push_back((row, col - 1));
         }
-        moves.push((row + dr, col + dc, c, false));
+        moves.push((row + dr, col + dc, c));
         q.push_back((row + dr, col + dc));
     }
-    for &(row, col, c, replace_with_blank) in moves.iter().rev() {
+    for &(row, col, c) in moves.iter().rev() {
         grid.cells[row as usize][col as usize] = c;
-        if replace_with_blank {
-            grid.cells[row as usize][col as usize] = '.';
-        }
     }
     grid.cells[start_row as usize][start_col as usize] = '.';
     true
