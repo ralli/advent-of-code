@@ -3,7 +3,7 @@ use nom::character::complete::{line_ending, one_of};
 use nom::multi::{many1, separated_list0};
 use nom::IResult;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::fmt::Formatter;
 use std::{fmt, fs};
 
@@ -55,7 +55,7 @@ fn shortest_path(grid: &Grid) -> Option<usize> {
         cost: 0,
         position: (sr, sc, Direction::East),
     });
-    let mut dist: BTreeMap<PosDir, usize> = BTreeMap::new();
+    let mut dist: HashMap<PosDir, usize> = HashMap::new();
     dist.insert((sr, sc, Direction::East), 0);
 
     while let Some(State { cost, position }) = q.pop() {
@@ -63,28 +63,26 @@ fn shortest_path(grid: &Grid) -> Option<usize> {
         if row == er && col == ec {
             return Some(cost);
         }
-        let dist_cost = dist.get(&position).unwrap_or(&usize::MAX);
+        let dist_cost = dist.entry(position).or_insert(usize::MAX);
         if cost > *dist_cost {
             continue;
         }
+        if cost < *dist_cost {
+            *dist_cost = cost;
+        }
         let edges = successors(grid, &position);
         for (next_pos, next_cost) in edges {
-            //
             let next_state = State {
                 cost: cost + next_cost,
                 position: next_pos,
             };
-            let entry = dist.entry(next_pos).or_insert(usize::MAX);
-            if next_state.cost < *entry {
-                *entry = next_state.cost;
-            }
             q.push(next_state);
         }
     }
     None
 }
 
-fn extended_shortest_path(grid: &Grid) -> (BTreeSet<Position>, usize) {
+fn extended_shortest_path(grid: &Grid) -> (HashSet<Position>, usize) {
     let (sr, sc) = grid.start_pos;
     let (er, ec) = grid.end_pos;
     let mut q: BinaryHeap<ExtendedState> = BinaryHeap::new();
@@ -93,9 +91,9 @@ fn extended_shortest_path(grid: &Grid) -> (BTreeSet<Position>, usize) {
         position: (sr, sc, Direction::East),
         path: vec![(sr, sc, Direction::East)],
     });
-    let mut dist: BTreeMap<PosDir, usize> = BTreeMap::new();
+    let mut dist: HashMap<PosDir, usize> = HashMap::new();
     dist.insert((sr, sc, Direction::East), 0);
-    let mut visited: BTreeSet<Position> = BTreeSet::from([(sr, sc)]);
+    let mut visited: HashSet<Position> = HashSet::from([(sr, sc)]);
     let mut min_cost = usize::MAX;
 
     while let Some(ExtendedState {
@@ -111,19 +109,16 @@ fn extended_shortest_path(grid: &Grid) -> (BTreeSet<Position>, usize) {
             }
             min_cost = cost;
         }
-        let dist_cost = dist.get(&position).unwrap_or(&usize::MAX);
+        let dist_cost = dist.entry(position).or_insert(usize::MAX);
         if cost > *dist_cost {
             continue;
+        }
+        if cost < *dist_cost {
+            *dist_cost = cost;
         }
         let edges = successors(grid, &position);
         for (edge_pos, edge_cost) in edges {
             let next_cost = cost + edge_cost;
-            let entry = dist.entry(edge_pos).or_insert(usize::MAX);
-
-            if next_cost < *entry {
-                *entry = next_cost;
-            }
-
             let next_path = path
                 .iter()
                 .copied()
