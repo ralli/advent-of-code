@@ -3,7 +3,7 @@ use nom::character::complete::{line_ending, one_of};
 use nom::multi::{many1, separated_list0};
 use nom::IResult;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BinaryHeap};
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
 use std::fmt::Formatter;
 use std::{fmt, fs};
 
@@ -31,8 +31,20 @@ fn part1(input: &str) -> anyhow::Result<usize> {
     Ok(cost)
 }
 
-fn part2(_input: &str) -> anyhow::Result<usize> {
-    Ok(0)
+fn part2(input: &str) -> anyhow::Result<usize> {
+    let (_, grid) = parse_grid(input).map_err(|e| anyhow!("{e}"))?;
+    let (visited, _cost) = extended_shortest_path(&grid);
+    // println!("{visited:?} {_cost}");
+    // let mut grid = grid.clone();
+    // for (row_idx, row) in grid.cells.iter_mut().enumerate() {
+    //     for (col_idx, col) in row.iter_mut().enumerate() {
+    //         if visited.contains(&(row_idx, col_idx)) {
+    //             *col = 'O';
+    //         }
+    //     }
+    // }
+    // println!("{grid}");
+    Ok(visited.len())
 }
 
 fn shortest_path(grid: &Grid) -> Option<usize> {
@@ -65,12 +77,91 @@ fn shortest_path(grid: &Grid) -> Option<usize> {
             let entry = dist.entry(next_pos).or_insert(usize::MAX);
             if next_state.cost < *entry {
                 *entry = next_state.cost;
-                q.push(next_state);
             }
+            q.push(next_state);
         }
     }
-    todo!()
+    None
 }
+
+fn extended_shortest_path(grid: &Grid) -> (BTreeSet<Position>, usize) {
+    let (sr, sc) = grid.start_pos;
+    let (er, ec) = grid.end_pos;
+    let mut q: BinaryHeap<ExtendedState> = BinaryHeap::new();
+    q.push(ExtendedState {
+        cost: 0,
+        position: (sr, sc, Direction::East),
+        path: vec![(sr, sc, Direction::East)],
+    });
+    let mut dist: BTreeMap<PosDir, usize> = BTreeMap::new();
+    dist.insert((sr, sc, Direction::East), 0);
+    let mut visited: BTreeSet<Position> = BTreeSet::from([(sr, sc)]);
+    let mut min_cost = usize::MAX;
+
+    while let Some(ExtendedState {
+        cost,
+        position,
+        path,
+    }) = q.pop()
+    {
+        let (row, col, _) = position;
+        if row == er && col == ec && cost <= min_cost {
+            for (r, c, _) in path.iter() {
+                visited.insert((*r, *c));
+            }
+            min_cost = cost;
+        }
+        let dist_cost = dist.get(&position).unwrap_or(&usize::MAX);
+        if cost > *dist_cost {
+            continue;
+        }
+        let edges = successors(grid, &position);
+        for (edge_pos, edge_cost) in edges {
+            let next_cost = cost + edge_cost;
+            let entry = dist.entry(edge_pos).or_insert(usize::MAX);
+
+            if next_cost < *entry {
+                *entry = next_cost;
+            }
+
+            let next_path = path
+                .iter()
+                .copied()
+                .chain(std::iter::once(edge_pos))
+                .collect();
+
+            let next_state = ExtendedState {
+                cost: next_cost,
+                position: edge_pos,
+                path: next_path,
+            };
+
+            q.push(next_state);
+        }
+    }
+    (visited, min_cost)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ExtendedState {
+    cost: usize,
+    position: PosDir,
+    path: Vec<PosDir>,
+}
+
+impl Ord for ExtendedState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.cost.cmp(&self.cost)
+        // .then_with(|| self.position.cmp(&other.position))
+    }
+}
+
+impl PartialOrd for ExtendedState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct State {
     cost: usize,
@@ -79,10 +170,8 @@ struct State {
 
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
-        other
-            .cost
-            .cmp(&self.cost)
-            // .then_with(|| self.position.cmp(&other.position))
+        other.cost.cmp(&self.cost)
+        // .then_with(|| self.position.cmp(&other.position))
     }
 }
 
@@ -234,8 +323,8 @@ mod tests {
 
     #[test]
     fn part2_works() -> anyhow::Result<()> {
-        // let result = part2(INPUT)?;
-        // assert_eq!(result, 9021);
+        let result = part2(INPUT)?;
+        assert_eq!(result, 45);
         Ok(())
     }
 }
