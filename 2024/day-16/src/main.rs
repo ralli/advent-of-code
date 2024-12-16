@@ -2,7 +2,8 @@ use anyhow::{anyhow, Context};
 use nom::character::complete::{line_ending, one_of};
 use nom::multi::{many1, separated_list0};
 use nom::IResult;
-use pathfinding::prelude::dijkstra;
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BinaryHeap};
 use std::fmt::Formatter;
 use std::{fmt, fs};
 
@@ -17,6 +18,78 @@ fn main() -> anyhow::Result<()> {
     println!("{result}");
 
     Ok(())
+}
+
+fn part1(input: &str) -> anyhow::Result<usize> {
+    let (_, grid) = parse_grid(input).map_err(|e| anyhow!("{e}"))?;
+    // println!("{grid}");
+    let result_attempt = shortest_path(&grid);
+    // println!("{result_attempt:?}");
+    let Some(cost) = result_attempt else {
+        return Err(anyhow!("no path found"));
+    };
+    Ok(cost)
+}
+
+fn part2(_input: &str) -> anyhow::Result<usize> {
+    Ok(0)
+}
+
+fn shortest_path(grid: &Grid) -> Option<usize> {
+    let (sr, sc) = grid.start_pos;
+    let (er, ec) = grid.end_pos;
+    let mut q: BinaryHeap<State> = BinaryHeap::new();
+    q.push(State {
+        cost: 0,
+        position: (sr, sc, Direction::East),
+    });
+    let mut dist: BTreeMap<PosDir, usize> = BTreeMap::new();
+    dist.insert((sr, sc, Direction::East), 0);
+
+    while let Some(State { cost, position }) = q.pop() {
+        let (row, col, _) = position;
+        if row == er && col == ec {
+            return Some(cost);
+        }
+        let dist_cost = dist.get(&position).unwrap_or(&usize::MAX);
+        if cost > *dist_cost {
+            continue;
+        }
+        let edges = successors(grid, &position);
+        for (next_pos, next_cost) in edges {
+            //
+            let next_state = State {
+                cost: cost + next_cost,
+                position: next_pos,
+            };
+            let entry = dist.entry(next_pos).or_insert(usize::MAX);
+            if next_state.cost < *entry {
+                *entry = next_state.cost;
+                q.push(next_state);
+            }
+        }
+    }
+    todo!()
+}
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+struct State {
+    cost: usize,
+    position: PosDir,
+}
+
+impl Ord for State {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other
+            .cost
+            .cmp(&self.cost)
+            // .then_with(|| self.position.cmp(&other.position))
+    }
+}
+
+impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -36,27 +109,6 @@ impl Direction {
             Direction::West => (0, -1),
         }
     }
-}
-
-fn part1(input: &str) -> anyhow::Result<usize> {
-    let (_, grid) = parse_grid(input).map_err(|e| anyhow!("{e}"))?;
-    // println!("{grid}");
-    let (sr, sc) = grid.start_pos;
-    let (er, ec) = grid.end_pos;
-    let result_attempt = dijkstra(
-        &(sr, sc, Direction::East),
-        |p| successors(&grid, p),
-        |(r, c, _)| *r == er && *c == ec,
-    );
-    // println!("{result_attempt:?}");
-    let Some((_path, cost)) = result_attempt else {
-        return Err(anyhow!("no path found"));
-    };
-    Ok(cost)
-}
-
-fn part2(_input: &str) -> anyhow::Result<usize> {
-    Ok(0)
 }
 
 fn turn_cost(dir1: &Direction, dir2: &Direction) -> Option<usize> {
