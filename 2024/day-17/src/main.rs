@@ -35,8 +35,6 @@ fn run(computer: &Computer, a: i64) -> Vec<i64> {
     c.run().unwrap()
 }
 
-/// A bit ugly, but it works
-///
 /// The output of the program depends on the lowest 3 bits of the register "A".
 ///
 /// The idea:
@@ -320,4 +318,5 @@ Program: 0,3,5,4,3,0"#;
         assert_eq!(result, 117440);
         Ok(())
     }
+
 }
