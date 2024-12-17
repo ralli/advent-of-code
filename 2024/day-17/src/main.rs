@@ -79,7 +79,7 @@ struct Computer {
 ///
 /// 1. the a register value gets 3 bits shorter each round
 /// 2. the output of the program for a given state (register values a, b, c) is only dependent on
-///    the 2 lower bits of the a register.
+///    the 3 lower bits of the a register.
 ///
 /// a=   1100000101110111010111111 b=                           0 c=                           0 ip= 0 inst=2
 /// a=   1100000101110111010111111 b=                         111 c=                           0 ip= 2 inst=1
