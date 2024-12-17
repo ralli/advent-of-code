@@ -48,7 +48,7 @@ fn run(computer: &Computer, a: i64) -> Vec<i64> {
 fn part2(_input: &str) -> anyhow::Result<usize> {
     let (_, computer) = parse_computer(_input).map_err(|e| anyhow!("{e}"))?;
     let program: Vec<i64> = computer.program.iter().map(|i| *i as i64).collect();
-    let mut q = VecDeque::from([(0i64, program)]);
+    let mut q = VecDeque::from([(0i64, program.as_slice())]);
     while let Some((a, program)) = q.pop_front() {
         if program.is_empty() {
             return Ok(a as usize);
@@ -58,8 +58,7 @@ fn part2(_input: &str) -> anyhow::Result<usize> {
             let output = run(&computer, 8 * a + i as i64);
             if output.first() == Some(&goal) {
                 // println!("{} {:?}", a + i as i64, output);
-                let mut next_program = program.clone();
-                next_program.pop();
+                let next_program = &program[..program.len() - 1];
                 q.push_back(((8 * a + i as i64), next_program));
             }
         }
@@ -75,7 +74,6 @@ struct Computer {
     program: Vec<u8>,
     ip: usize,
 }
-
 
 /// looking at the instruction dump of part1 you see some reasons, why part2 works:
 ///
@@ -119,7 +117,6 @@ struct Computer {
 /// a=                           0 b=                           1 c=                           1 ip=10 inst=1
 /// a=                           0 b=                         111 c=                           1 ip=12 inst=5
 /// a=                           0 b=                         111 c=                           1 ip=14 inst=3
-
 #[allow(dead_code)]
 fn dump_state(computer: &Computer) {
     println!(
@@ -160,7 +157,7 @@ impl Computer {
                     }
                 }
                 4 => {
-                    self.b = self.b ^ self.c;
+                    self.b ^= self.c;
                     self.ip += 2;
                 }
                 5 => {
@@ -318,5 +315,4 @@ Program: 0,3,5,4,3,0"#;
         assert_eq!(result, 117440);
         Ok(())
     }
-
 }
