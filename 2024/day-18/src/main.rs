@@ -34,12 +34,24 @@ fn part1(input: &str, size: usize) -> anyhow::Result<usize> {
 fn part2(input: &str, min_size: usize) -> anyhow::Result<Point> {
     let grid: Grid = input.parse()?;
     let max_size = grid.points.iter().len();
-    for i in min_size..max_size {
-        if bfs_with_len(&grid, i).is_none() {
-            return Ok(grid.points[i - 1]);
+    let mut left = min_size;
+    let mut right = max_size;
+
+    while left < right {
+        let m = left + (right - left) / 2;
+        if bfs_with_len(&grid, m).is_none() {
+            right = m;
+        } else {
+            left = m + 1;
         }
     }
-    Err(anyhow!("no solution found"))
+
+    let p1 = grid.points[left - 1];
+    let p1_valid = bfs_with_len(&grid, left).is_none();
+    if !p1_valid {
+        return Err(anyhow!("no solution found"));
+    }
+    Ok(p1)
 }
 
 fn bfs_with_len(grid: &Grid, size: usize) -> Option<usize> {
