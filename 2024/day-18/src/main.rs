@@ -57,7 +57,7 @@ fn part2(input: &str, min_size: usize) -> anyhow::Result<Point> {
 fn bfs_with_len(grid: &Grid, size: usize) -> Option<usize> {
     let grid = grid.truncate(size);
     // println!("{}", grid);
-    let points: HashSet<Point> = HashSet::from_iter(grid.points.clone().into_iter());
+    let points: HashSet<Point> = HashSet::from_iter(grid.points.clone());
     let mut q = VecDeque::from([(0, 0, 0)]);
     let goal = (grid.width, grid.height);
     let mut visited = HashSet::new();
@@ -101,7 +101,7 @@ impl Grid {
         if x < 0 || y < 0 || x > self.width || y > self.height {
             return '#';
         }
-        if self.points.contains(&p) {
+        if self.points.contains(p) {
             '#'
         } else {
             '.'

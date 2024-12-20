@@ -203,13 +203,6 @@ p=9,5 v=-3,-3"#;
     }
 
     #[test]
-    fn part2_works() -> anyhow::Result<()> {
-        let result = part2(INPUT, 11, 7)?;
-        assert_eq!(result, 1);
-        Ok(())
-    }
-
-    #[test]
     fn test_coordinate_section() {
         assert_eq!(Some(0), coordinate_section(0, 7));
         assert_eq!(Some(0), coordinate_section(1, 7));

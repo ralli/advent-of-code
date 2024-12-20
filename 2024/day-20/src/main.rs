@@ -126,7 +126,6 @@ fn cheats_from_position2(
             if nr < 0 || nr >= height || nc < 0 || nc >= width {
                 continue;
             }
-            let v = grid[nr as usize][nc as usize];
             q.push_back((nr, nc, distance + 1));
         }
     }
@@ -182,15 +181,6 @@ fn get_position_of(grid: &[Vec<char>], value: char) -> Option<Position> {
 type Cheat = (Position, Position);
 type Position = (isize, isize);
 type Grid = Vec<Vec<char>>;
-
-fn print_grid(grid: &Grid) {
-    for row in grid.iter() {
-        for col in row.iter() {
-            print!("{col}");
-        }
-        println!();
-    }
-}
 
 fn parse_grid(input: &str) -> IResult<&str, Vec<Vec<char>>> {
     let parse_line = many1(one_of(".#SE"));

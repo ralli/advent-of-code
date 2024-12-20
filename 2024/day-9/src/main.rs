@@ -141,14 +141,14 @@ mod tests {
     #[test]
     fn test_part1() {
         let input = r#"2333133121414131402"#;
-        let result = part1(&input).unwrap();
+        let result = part1(input).unwrap();
         assert_eq!(result, 1928);
     }
 
     #[test]
     fn test_part2() {
         let input = r#"2333133121414131402"#;
-        let result = part2(&input).unwrap();
+        let result = part2(input).unwrap();
         assert_eq!(result, 2858);
     }
 }
