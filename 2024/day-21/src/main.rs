@@ -12,53 +12,148 @@ fn main() -> anyhow::Result<()> {
     let result = part1(&content)?;
     println!("{result}");
 
+    let result = part2(&content)?;
+    println!("{result}");
+
     Ok(())
+}
+
+fn part1(input: &str) -> anyhow::Result<usize> {
+    let (_, inputs) = parse_input(input).map_err(|e| anyhow!(e.to_string()))?;
+    let mut solver = Solver::new();
+
+    let result = inputs
+        .iter()
+        .map(|input| {
+            let length = solver.solve(input, 2);
+            let n = numeric_part(input).unwrap();
+            (n, length)
+        })
+        // .inspect(|(n, length)| {
+        //     println!("{length} {n}");
+        // })
+        .map(|(n, length)| n * length)
+        .sum();
+
+    Ok(result)
+}
+
+fn part2(input: &str) -> anyhow::Result<usize> {
+    let (_, inputs) = parse_input(input).map_err(|e| anyhow!(e.to_string()))?;
+    let mut solver = Solver::new();
+
+    let result = inputs
+        .iter()
+        .map(|input| {
+            let length = solver.solve(input, 25);
+            let n = numeric_part(input).unwrap();
+            (n, length)
+        })
+        // .inspect(|(n, length)| {
+        //     println!("{length} {n}");
+        // })
+        .map(|(n, length)| n * length)
+        .sum();
+
+    Ok(result)
 }
 
 type Keyboard = HashMap<char, Position>;
 type Position = (isize, isize);
 
-fn part1(input: &str) -> anyhow::Result<usize> {
-    let (_, inputs) = parse_input(input).map_err(|e| anyhow!(e.to_string()))?;
-    let mut result = 0;
-
-    for input in inputs.iter() {
-        let complexity = solve1(input);
-        let n = numeric_part(input)?;
-        result += n * complexity;
-    }
-
-    Ok(result)
+///
+/// First simulated a series of keyboards to solve part1.
+/// This was too inefficient to solve part2.
+///
+/// Observations:
+/// - Each keyboard ends up in the same state with its robot arm pointing to 'A'.
+/// - The lengths for each move on the numeric keyboard can be calculated independently.
+/// - The lengths of each move of each of the keyboards can be cached with a key (n, from, to) where
+///   n is some ID of the keyboard.
+///  
+struct Solver {
+    cache: HashMap<(char, char, usize), usize>,
+    dir_answers: HashMap<(char, char), Vec<Vec<char>>>,
+    num_answers: HashMap<(char, char), Vec<Vec<char>>>,
 }
 
-fn solve1(input: &[char]) -> usize {
-    let num_keyboard = create_num_keyboard();
-    let arrow_keyboard = create_arrow_keyboard();
+impl Solver {
+    fn new() -> Self {
+        let cache = HashMap::new();
+        let num_keypad = create_num_keyboard();
+        let dir_keypad = create_directional_keyboard();
+        let dir_answers = create_answers(&dir_keypad);
+        let num_answers = create_answers(&num_keypad);
+        Self {
+            cache,
+            dir_answers,
+            num_answers,
+        }
+    }
 
-    let robot1 = solve(input, &num_keyboard);
+    fn solve(&mut self, input: &[char], depth: usize) -> usize {
+        iter::once(&'A')
+            .chain(input.iter())
+            .zip(input.iter())
+            .map(|(&a, &b)| {
+                let inputs = self.num_answers.get(&(a, b)).cloned().unwrap();
+                inputs
+                    .iter()
+                    .map(|input| self.int_solve(input, depth))
+                    .min()
+                    .unwrap_or_default()
+            })
+            .sum()
+    }
 
-    let robot2: Vec<Vec<char>> = robot1
-        .iter()
-        .flat_map(|input| solve(input, &arrow_keyboard))
-        .collect();
+    ///
+    /// Takes a series of inputs on the directional keyboard and  
+    /// calculates the number of moves required to perform up to directional keyboard
+    /// directly before the numeric keyboard.
+    ///
+    fn int_solve(&mut self, input: &[char], depth: usize) -> usize {
+        let mut result = 0;
+        for (&a, &b) in iter::once(&'A').chain(input.iter()).zip(input.iter()) {
+            result += self.calc_length(a, b, depth);
+        }
+        result
+    }
 
-    let min_len = robot2
-        .iter()
-        .map(|positions| positions.len())
-        .min()
-        .unwrap_or_default();
+    ///
+    /// calculates the number of moves required for a single move on this directional
+    /// keyboard identified by `depth` up to the first directional keyboard (the one which you type on).
+    ///
+    /// Caches (memoizes) the intermediate results.
+    ///
+    fn calc_length(&mut self, from: char, to: char, depth: usize) -> usize {
+        if let Some(&count) = self.cache.get(&(from, to, depth)) {
+            return count;
+        }
+        if depth == 1 {
+            // this is the number of moves on the first keyboard
+            // to move the robot arm from the first to the second position
+            // and press the 'A' button.
+            return self
+                .dir_answers
+                .get(&(from, to))
+                .map(|v| v.first().map(|w| w.len()).unwrap_or_default())
+                .unwrap_or_default();
+        }
 
-    let robot3: Vec<Vec<char>> = robot2
-        .iter()
-        .filter(|r| r.len() == min_len)
-        .flat_map(|input| solve(input, &arrow_keyboard))
-        .collect();
+        //
+        // calculate the minimum number of moves required one level up the chain...
+        //
+        let inputs = self.dir_answers.get(&(from, to)).cloned().unwrap();
+        let min_length = inputs
+            .iter()
+            .map(|input| self.int_solve(input, depth - 1))
+            .min()
+            .unwrap_or_default();
 
-    robot3
-        .iter()
-        .map(|positions| positions.len())
-        .min()
-        .unwrap_or_default()
+        self.cache.insert((from, to, depth), min_length);
+
+        min_length
+    }
 }
 
 fn numeric_part(input: &[char]) -> anyhow::Result<usize> {
@@ -70,37 +165,7 @@ fn numeric_part(input: &[char]) -> anyhow::Result<usize> {
     Ok(result)
 }
 
-fn solve(input: &[char], keyboard: &Keyboard) -> Vec<Vec<char>> {
-    let mut result = Vec::new();
-    let valid_positions: HashSet<Position> = keyboard.values().copied().collect();
-    let pos = position_for('A', keyboard).unwrap();
-    let mut cache = HashMap::new();
-    let mut q: VecDeque<(&[char], Position, Vec<char>)> =
-        VecDeque::from([(input, pos, Vec::new())]);
-
-    while let Some((input, pos, path)) = q.pop_front() {
-        if input.is_empty() {
-            result.push(path);
-            continue;
-        }
-        let c = input.first().unwrap();
-        let input = &input[1..];
-        let next_pos = position_for(*c, keyboard).unwrap();
-        let inputs = cached_paths_for(&mut cache, &pos, &next_pos, &valid_positions);
-        for bla in inputs.iter() {
-            let next_path = path
-                .iter()
-                .copied()
-                .chain(bla.iter().copied())
-                .chain(iter::once('A'))
-                .collect();
-            q.push_back((input, next_pos, next_path));
-        }
-    }
-    result
-}
-
-fn create_arrow_keyboard() -> Keyboard {
+fn create_directional_keyboard() -> Keyboard {
     HashMap::from([
         ('^', (0, 1)),
         ('A', (0, 2)),
@@ -126,15 +191,18 @@ fn create_num_keyboard() -> Keyboard {
     ])
 }
 
-fn cached_paths_for<'a>(
-    cache: &'a mut HashMap<(Position, Position), Vec<Vec<char>>>,
-    from: &Position,
-    to: &Position,
-    valid_positions: &HashSet<Position>,
-) -> &'a Vec<Vec<char>> {
-    cache
-        .entry((*from, *to))
-        .or_insert_with(|| paths_for(from, to, valid_positions))
+fn create_answers(keyboard: &Keyboard) -> HashMap<(char, char), Vec<Vec<char>>> {
+    let valid_positions: HashSet<Position> = keyboard.values().copied().collect();
+    let mut result = HashMap::new();
+    for (from_key, from_position) in keyboard.iter() {
+        for (to_key, to_position) in keyboard.iter() {
+            result.insert(
+                (*from_key, *to_key),
+                paths_for(from_position, to_position, &valid_positions),
+            );
+        }
+    }
+    result
 }
 
 fn paths_for(
@@ -153,7 +221,10 @@ fn paths_for(
         };
         if (row, col) == *to {
             min_len = path.len();
-            results.push(path.clone());
+            let mut result = path.clone();
+            result.push('A');
+            results.push(result);
+            continue;
         }
         if path.len() >= min_len {
             continue;
@@ -173,10 +244,6 @@ fn paths_for(
 
 fn is_valid(row: isize, col: isize, valid_positions: &HashSet<Position>) -> bool {
     valid_positions.contains(&(row, col))
-}
-
-fn position_for(c: char, keyboard: &Keyboard) -> Option<Position> {
-    keyboard.get(&c).copied()
 }
 
 fn parse_input(input: &str) -> IResult<&str, Vec<Vec<char>>> {
@@ -205,21 +272,10 @@ mod tests {
     }
 
     #[test]
-    fn test_paths_for() {
-        let num_keyboard = create_num_keyboard();
-        let num_positions: HashSet<Position> = num_keyboard.values().copied().collect();
-
-        let from = position_for('A', &num_keyboard).unwrap();
-        let to = position_for('8', &num_keyboard).unwrap();
-        let paths = paths_for(&from, &to, &num_positions);
-        println!("{paths:?}");
-    }
-
-    #[test]
     fn test_solve() {
-        let num_keyboard = create_num_keyboard();
         let input = "029A".chars().collect::<Vec<_>>();
-        let results = solve(&input, &num_keyboard);
-        assert_eq!(results.len(), 3);
+        let mut solver = Solver::new();
+        let result = solver.solve(&input, 25);
+        println!("{result}");
     }
 }
