@@ -92,10 +92,9 @@ impl Solver {
     }
 
     fn solve(&mut self, input: &[char], depth: usize) -> usize {
-        iter::once(&'A')
-            .chain(input.iter())
-            .zip(input.iter())
-            .map(|(&a, &b)| {
+        moves_for(input)
+            .iter()
+            .map(|&(a, b)| {
                 let inputs = self.num_answers.get(&(a, b)).cloned().unwrap();
                 inputs
                     .iter()
@@ -112,11 +111,10 @@ impl Solver {
     /// directly before the numeric keyboard.
     ///
     fn int_solve(&mut self, input: &[char], depth: usize) -> usize {
-        let mut result = 0;
-        for (&a, &b) in iter::once(&'A').chain(input.iter()).zip(input.iter()) {
-            result += self.calc_length(a, b, depth);
-        }
-        result
+        moves_for(input)
+            .iter()
+            .map(|&(from, to)| self.calc_length(from, to, depth))
+            .sum()
     }
 
     ///
@@ -173,6 +171,16 @@ fn create_directional_keyboard() -> Keyboard {
         ('v', (1, 1)),
         ('>', (1, 2)),
     ])
+}
+
+fn moves_for(input: &[char]) -> Vec<(char, char)> {
+    let mut from = 'A';
+    let mut result = Vec::new();
+    for &to in input.iter() {
+        result.push((from, to));
+        from = to;
+    }
+    result
 }
 
 fn create_num_keyboard() -> Keyboard {
