@@ -58,36 +58,39 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     Ok(result)
 }
 
-type Keyboard = HashMap<char, Position>;
+type Keypad = HashMap<char, Position>;
 type Position = (isize, isize);
 
 ///
-/// First simulated a series of keyboards to solve part1.
+/// First simulated a series of keypads to solve part1.
 /// This was too inefficient to solve part2.
 ///
 /// Observations:
-/// - Each keyboard ends up in the same state with its robot arm pointing to 'A'.
-/// - The lengths for each move on the numeric keyboard can be calculated independently.
-/// - The lengths of each move of each of the keyboards can be cached with a key (n, from, to) where
-///   n is some ID of the keyboard.
+/// - Each keypad ends up in the same state with its robot arm pointing to 'A'.
+/// - The lengths for each move on the numeric keypad can be calculated independently.
+/// - The lengths of each move of each of the keypads can be cached with a key (n, from, to) where
+///   n is some ID of the keypad.
 ///  
 struct Solver {
     cache: HashMap<(char, char, usize), usize>,
-    dir_answers: HashMap<(char, char), Vec<Vec<char>>>,
-    num_answers: HashMap<(char, char), Vec<Vec<char>>>,
+    // move sequences required to move the robot arm from
+    // a start position to the end position (including the 'A'-Button-Press)
+    num_shortest_paths: HashMap<(char, char), Vec<Vec<char>>>,
+    dir_shortest_paths: HashMap<(char, char), Vec<Vec<char>>>,
 }
 
 impl Solver {
     fn new() -> Self {
         let cache = HashMap::new();
-        let num_keypad = create_num_keyboard();
-        let dir_keypad = create_directional_keyboard();
-        let dir_answers = create_answers(&dir_keypad);
-        let num_answers = create_answers(&num_keypad);
+
+        let num_keypad = create_num_keypad();
+        let dir_keypad = create_dir_keypad();
+        let dir_answers = shortest_paths_for_keypad(&dir_keypad);
+        let num_answers = shortest_paths_for_keypad(&num_keypad);
         Self {
             cache,
-            dir_answers,
-            num_answers,
+            dir_shortest_paths: dir_answers,
+            num_shortest_paths: num_answers,
         }
     }
 
@@ -95,7 +98,7 @@ impl Solver {
         moves_for(input)
             .iter()
             .map(|&(a, b)| {
-                let inputs = self.num_answers.get(&(a, b)).cloned().unwrap();
+                let inputs = self.num_shortest_paths.get(&(a, b)).cloned().unwrap();
                 inputs
                     .iter()
                     .map(|input| self.int_solve(input, depth))
@@ -106,9 +109,9 @@ impl Solver {
     }
 
     ///
-    /// Takes a series of inputs on the directional keyboard and  
-    /// calculates the number of moves required to perform up to directional keyboard
-    /// directly before the numeric keyboard.
+    /// Takes a series of inputs on the directional keypad and  
+    /// calculates the number of moves required to perform up to directional keypad
+    /// directly before the numeric keypad.
     ///
     fn int_solve(&mut self, input: &[char], depth: usize) -> usize {
         moves_for(input)
@@ -119,7 +122,7 @@ impl Solver {
 
     ///
     /// calculates the number of moves required for a single move on this directional
-    /// keyboard identified by `depth` up to the first directional keyboard (the one which you type on).
+    /// keypad identified by `depth` up to the first directional keypad (the one which you type on).
     ///
     /// Caches (memoizes) the intermediate results.
     ///
@@ -128,11 +131,11 @@ impl Solver {
             return count;
         }
         if depth == 1 {
-            // this is the number of moves on the first keyboard
+            // this is the number of moves on the first keypad
             // to move the robot arm from the first to the second position
             // and press the 'A' button.
             return self
-                .dir_answers
+                .dir_shortest_paths
                 .get(&(from, to))
                 .map(|v| v.first().map(|w| w.len()).unwrap_or_default())
                 .unwrap_or_default();
@@ -141,7 +144,7 @@ impl Solver {
         //
         // calculate the minimum number of moves required one level up the chain...
         //
-        let inputs = self.dir_answers.get(&(from, to)).cloned().unwrap();
+        let inputs = self.dir_shortest_paths.get(&(from, to)).cloned().unwrap();
         let min_length = inputs
             .iter()
             .map(|input| self.int_solve(input, depth - 1))
@@ -163,7 +166,7 @@ fn numeric_part(input: &[char]) -> anyhow::Result<usize> {
     Ok(result)
 }
 
-fn create_directional_keyboard() -> Keyboard {
+fn create_dir_keypad() -> Keypad {
     HashMap::from([
         ('^', (0, 1)),
         ('A', (0, 2)),
@@ -183,7 +186,7 @@ fn moves_for(input: &[char]) -> Vec<(char, char)> {
     result
 }
 
-fn create_num_keyboard() -> Keyboard {
+fn create_num_keypad() -> Keypad {
     HashMap::from([
         ('7', (0, 0)),
         ('8', (0, 1)),
@@ -199,21 +202,21 @@ fn create_num_keyboard() -> Keyboard {
     ])
 }
 
-fn create_answers(keyboard: &Keyboard) -> HashMap<(char, char), Vec<Vec<char>>> {
-    let valid_positions: HashSet<Position> = keyboard.values().copied().collect();
+fn shortest_paths_for_keypad(keypad: &Keypad) -> HashMap<(char, char), Vec<Vec<char>>> {
+    let valid_positions: HashSet<Position> = keypad.values().copied().collect();
     let mut result = HashMap::new();
-    for (from_key, from_position) in keyboard.iter() {
-        for (to_key, to_position) in keyboard.iter() {
+    for (from_key, from_position) in keypad.iter() {
+        for (to_key, to_position) in keypad.iter() {
             result.insert(
                 (*from_key, *to_key),
-                paths_for(from_position, to_position, &valid_positions),
+                shortest_paths_between(from_position, to_position, &valid_positions),
             );
         }
     }
     result
 }
 
-fn paths_for(
+fn shortest_paths_between(
     from: &Position,
     to: &Position,
     valid_positions: &HashSet<Position>,
