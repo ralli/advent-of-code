@@ -110,7 +110,7 @@ impl Solver {
 
     ///
     /// Takes a series of inputs on the directional keypad and  
-    /// calculates the number of moves required to perform up to directional keypad
+    /// calculates the number of moves required to perform up to the directional keypad
     /// directly before the numeric keypad.
     ///
     fn int_solve(&mut self, input: &[char], depth: usize) -> usize {
