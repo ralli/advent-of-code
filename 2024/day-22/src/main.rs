@@ -5,6 +5,7 @@ use nom::combinator::eof;
 use nom::multi::separated_list0;
 use nom::IResult;
 use std::collections::{HashMap, HashSet};
+use std::iter;
 
 fn main() -> anyhow::Result<()> {
     let content = std::fs::read_to_string("day-22/input.txt")?;
@@ -28,7 +29,7 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     let (_, numbers) = parse_input(input).map_err(|e| anyhow!("{e}"))?;
     let mut totals: HashMap<(i8, i8, i8, i8), i64> = HashMap::new();
     for num in numbers.iter() {
-        let prices = prices_for_number(*num);
+        let prices = prices_for_number(*num).take(2000).collect::<Vec<_>>();
         let mut visited = HashSet::new();
         for w in prices.windows(5) {
             let differences = sequence_key(w);
@@ -46,20 +47,16 @@ fn sequence_key(a: &[i8]) -> (i8, i8, i8, i8) {
     (a[1] - a[0], a[2] - a[1], a[3] - a[2], a[4] - a[3])
 }
 
-fn prices_for_number(num: i64) -> Vec<i8> {
-    //iter::once(num % 10).chain()
-    let mut result = Vec::new();
-    result.push((num % 10) as i8);
-    let mut num = num;
-    for _ in 0..2000 {
-        num = next_number(num);
-        result.push((num % 10) as i8);
-    }
-    result
+fn prices_for_number(num: i64) -> impl Iterator<Item = i8> {
+    iter::once((num % 10) as i8).chain(random_sequence(num).map(|n| (n % 10) as i8))
 }
 
 fn number_after_steps(num: i64, steps: usize) -> i64 {
-    (0..steps).fold(num, |a, _| next_number(a))
+    random_sequence(num).nth(steps).unwrap()
+}
+
+fn random_sequence(num: i64) -> impl Iterator<Item = i64> {
+    iter::successors(Some(num), |n| Some(next_number(*n)))
 }
 
 fn next_number(num: i64) -> i64 {
