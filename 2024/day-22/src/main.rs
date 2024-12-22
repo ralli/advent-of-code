@@ -26,15 +26,15 @@ fn part1(input: &str) -> anyhow::Result<usize> {
 
 fn part2(input: &str) -> anyhow::Result<usize> {
     let (_, numbers) = parse_input(input).map_err(|e| anyhow!("{e}"))?;
-    let mut totals: HashMap<Vec<i64>, i64> = HashMap::new();
+    let mut totals: HashMap<(i8, i8, i8, i8), i64> = HashMap::new();
     for num in numbers.iter() {
         let prices = prices_for_number(*num);
         let mut visited = HashSet::new();
         for w in prices.windows(5) {
             let differences = sequence_key(w);
-            if visited.insert(differences.clone()) {
+            if visited.insert(differences) {
                 let total = totals.entry(differences).or_default();
-                *total += w[4];
+                *total += w[4] as i64;
             }
         }
     }
@@ -42,18 +42,18 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     Ok(result)
 }
 
-fn sequence_key(a: &[i64]) -> Vec<i64> {
-    [a[1] - a[0], a[2] - a[1], a[3] - a[2], a[4] - a[3]].to_vec()
+fn sequence_key(a: &[i8]) -> (i8, i8, i8, i8) {
+    (a[1] - a[0], a[2] - a[1], a[3] - a[2], a[4] - a[3])
 }
 
-fn prices_for_number(num: i64) -> Vec<i64> {
+fn prices_for_number(num: i64) -> Vec<i8> {
     //iter::once(num % 10).chain()
     let mut result = Vec::new();
-    result.push(num % 10);
+    result.push((num % 10) as i8);
     let mut num = num;
     for _ in 0..2000 {
         num = next_number(num);
-        result.push(num % 10);
+        result.push((num % 10) as i8);
     }
     result
 }
@@ -63,10 +63,9 @@ fn number_after_steps(num: i64, steps: usize) -> i64 {
 }
 
 fn next_number(num: i64) -> i64 {
-    let num = (num ^ (num * 64)) % 16777216;
-    let num = (num ^ (num / 32)) % 16777216;
-    let num = (num ^ (num * 2048)) % 16777216;
-    num
+    let num = (num ^ (num << 6)) & 16777215;
+    let num = (num ^ (num >> 5)) & 16777215;
+    (num ^ (num << 11)) & 16777215
 }
 
 fn parse_input(input: &str) -> IResult<&str, Vec<i64>> {
