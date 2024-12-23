@@ -64,31 +64,32 @@ fn find_all_triples<'a>(adj: &AdjList<'a>) -> BTreeSet<Vec<&'a str>> {
 
 fn find_all<'a>(adj: &AdjList<'a>) -> BTreeSet<BTreeSet<&'a str>> {
     let mut result = BTreeSet::new();
+    let mut q = VecDeque::new();
 
     for start in adj.keys() {
-        let mut q = VecDeque::from([(*start, BTreeSet::from([*start]))]);
+        q.push_back((*start, BTreeSet::from([*start])));
+    }
 
-        while let Some((from, reachable)) = q.pop_front() {
-            if result.contains(&reachable) {
+    while let Some((from, reachable)) = q.pop_front() {
+        if result.contains(&reachable) {
+            continue;
+        }
+        let froms = adj.get(from).unwrap();
+        for to in froms.iter() {
+            if reachable.contains(to) {
                 continue;
             }
-            let froms = adj.get(from).unwrap();
-            for to in froms.iter() {
-                if reachable.contains(to) {
-                    continue;
-                }
-                if !reachable
-                    .iter()
-                    .all(|r| adj.get(r).map(|r| r.contains(to)).unwrap_or(false))
-                {
-                    continue;
-                }
-                let mut next_reachable = reachable.clone();
-                next_reachable.insert(to);
-                q.push_back((to, next_reachable));
+            if !reachable
+                .iter()
+                .all(|r| adj.get(r).map(|r| r.contains(to)).unwrap_or(false))
+            {
+                continue;
             }
-            result.insert(reachable);
+            let mut next_reachable = reachable.clone();
+            next_reachable.insert(to);
+            q.push_back((to, next_reachable));
         }
+        result.insert(reachable);
     }
 
     result
