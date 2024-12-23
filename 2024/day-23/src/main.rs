@@ -64,11 +64,7 @@ fn find_all_triples<'a>(adj: &AdjList<'a>) -> BTreeSet<Vec<&'a str>> {
 
 fn find_all<'a>(adj: &AdjList<'a>) -> BTreeSet<BTreeSet<&'a str>> {
     let mut result = BTreeSet::new();
-    let mut q = VecDeque::new();
-
-    for start in adj.keys() {
-        q.push_back((*start, BTreeSet::from([*start])));
-    }
+    let mut q = VecDeque::from_iter(adj.keys().map(|start| (*start, BTreeSet::from([*start]))));
 
     while let Some((from, reachable)) = q.pop_front() {
         if result.contains(&reachable) {
