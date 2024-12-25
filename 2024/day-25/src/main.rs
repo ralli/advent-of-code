@@ -9,9 +9,6 @@ fn main() -> anyhow::Result<()> {
     let result = part1(&content)?;
     println!("{result}");
 
-    let result = part2(&content)?;
-    println!("{result}");
-
     Ok(())
 }
 
@@ -31,10 +28,6 @@ fn part1(input: &str) -> anyhow::Result<usize> {
         }
     }
     Ok(result)
-}
-
-fn part2(_input: &str) -> anyhow::Result<usize> {
-    Ok(0)
 }
 
 fn matches(lock_heights: &[usize], key_heights: &[usize], height: usize) -> bool {
