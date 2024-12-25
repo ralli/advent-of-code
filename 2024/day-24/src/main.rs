@@ -126,7 +126,7 @@ impl<'a> Wires<'a> {
         }
         not_seen.remove(&left_inst.op);
 
-        if left_inst.op == Op::XOR && !is_x_and_y(left_inst.left, left_inst.right, num) {
+        if left_inst.op == Op::XOR && !is_valid_x_and_y(left_inst.left, left_inst.right, num) {
             return Some(inst.left.to_string());
         }
 
@@ -143,7 +143,7 @@ impl<'a> Wires<'a> {
             return Some(inst.right.to_string());
         }
 
-        if right_inst.op == Op::XOR && !is_x_and_y(right_inst.left, right_inst.right, num) {
+        if right_inst.op == Op::XOR && !is_valid_x_and_y(right_inst.left, right_inst.right, num) {
             return Some(inst.right.to_string());
         }
 
@@ -159,7 +159,7 @@ impl<'a> Wires<'a> {
     }
 }
 
-fn is_x_and_y(lhs: &str, rhs: &str, num: i32) -> bool {
+fn is_valid_x_and_y(lhs: &str, rhs: &str, num: i32) -> bool {
     let k1 = key_for('x', num);
     let k2 = key_for('y', num);
     (lhs == k1 && rhs == k2) || (lhs == k2 && rhs == k1)
