@@ -23,8 +23,6 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(input: &str) -> anyhow::Result<usize> {
     let (_, (inputs, instructions)) = parse_input(input).map_err(|e| anyhow!("{e}"))?;
-    // println!("{inputs:?}");
-    // println!("{instructions:#?}");
     let mut wires = Wires::new(inputs, instructions);
     let mut outputs: Vec<_> = wires
         .outputs
@@ -33,15 +31,12 @@ fn part1(input: &str) -> anyhow::Result<usize> {
         .filter(|o| o.starts_with('z'))
         .collect();
     outputs.sort_by(|a, b| b.cmp(a));
-    // println!("{:?}", outputs);
     let mut result = 0;
     for o in outputs.iter() {
         result <<= 1;
         let b = wires.get(o).unwrap() as usize;
-        // println!("{o}: {b}");
         result |= b;
     }
-    // println!("{result:012b}");
     Ok(result)
 }
 
@@ -54,7 +49,6 @@ fn part2(input: &str) -> anyhow::Result<String> {
         .filter(|out| out.starts_with('z'))
         .count();
     let z_max = z_count - 1;
-    println!("z_max: {z_max}");
     let mut bads: Vec<_> = (2..z_max)
         .filter_map(|z_num| wires.check(z_num as i32))
         .collect();
@@ -109,8 +103,12 @@ impl<'a> Wires<'a> {
         None
     }
 
+    //
     // by far more checks needed, but works on my input
     // returns the name of a wire to swap or None...
+    //
+    // valid: z_n = (x_n XOR y_n) XOR ((x_n-1 AND y_n-1) OR (... AND ...))
+    //
     fn check(&self, num: i32) -> Option<String> {
         let z_key = key_for('z', num);
         let inst = self.instructions.get(z_key.as_str()).unwrap();
@@ -121,19 +119,34 @@ impl<'a> Wires<'a> {
 
         let mut not_seen = HashSet::from([Op::XOR, Op::OR]);
         let left_inst = self.instructions.get(inst.left).unwrap();
+
         if !not_seen.contains(&left_inst.op) {
             return Some(inst.left.to_string());
         }
         not_seen.remove(&left_inst.op);
 
         if left_inst.op == Op::XOR && !is_valid_x_and_y(left_inst.left, left_inst.right, num) {
-            return Some(inst.left.to_string());
+            return Some(left_inst.result.to_string());
         }
 
         if left_inst.op == Op::OR {
             let id = left_inst.left.to_string();
             let ll_inst = self.instructions.get(id.as_str()).unwrap();
             if ll_inst.op != Op::AND {
+                return Some(id);
+            }
+            // x and y but not x_(n-1) AND y_(n-1)
+            if is_invalid_x_y(ll_inst.left, ll_inst.right, num - 1) {
+                return Some(id);
+            }
+
+            let id = left_inst.right.to_string();
+            let ll_inst = self.instructions.get(id.as_str()).unwrap();
+            if ll_inst.op != Op::AND {
+                return Some(id);
+            }
+            // x and y but not x_(n-1) AND y_(n-1)
+            if is_invalid_x_y(ll_inst.left, ll_inst.right, num - 1) {
                 return Some(id);
             }
         }
@@ -153,10 +166,33 @@ impl<'a> Wires<'a> {
             if rl_inst.op != Op::AND {
                 return Some(id);
             }
+            // x and y but not x_(n-1) AND y_(n-1)
+            if is_invalid_x_y(rl_inst.left, rl_inst.right, num - 1) {
+                return Some(id);
+            }
+
+            let id = right_inst.right.to_string();
+            let rl_inst = self.instructions.get(id.as_str()).unwrap();
+            if rl_inst.op != Op::AND {
+                return Some(id);
+            }
+            // x and y but not x_(n-1) AND y_(n-1)
+            if is_invalid_x_y(rl_inst.left, rl_inst.right, num - 1) {
+                return Some(id);
+            }
         }
 
         None
     }
+}
+
+fn is_invalid_x_y(lhs: &str, rhs: &str, num: i32) -> bool {
+    if !((lhs.starts_with('x') && rhs.starts_with('y'))
+        || (lhs.starts_with('y') && rhs.starts_with('x')))
+    {
+        return false;
+    }
+    !is_valid_x_and_y(lhs, rhs, num)
 }
 
 fn is_valid_x_and_y(lhs: &str, rhs: &str, num: i32) -> bool {
