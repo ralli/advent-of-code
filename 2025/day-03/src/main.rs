@@ -50,7 +50,7 @@ fn parse_digits(input: &mut &str) -> ModalResult<Vec<u32>> {
 }
 
 fn get_max(bank: &[u32], count: usize) -> usize {
-    let mut result = Vec::new();
+    let mut result = 0;
     let mut index = 0;
 
     for size in (1..=count).rev() {
@@ -64,11 +64,10 @@ fn get_max(bank: &[u32], count: usize) -> usize {
             }
         }
 
-        result.push(found_digit);
+        result = result * 10 + found_digit as usize;
     }
+
     result
-        .iter()
-        .fold(0, |acc, &digit| acc * 10 + digit as usize)
 }
 
 #[cfg(test)]
