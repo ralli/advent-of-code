@@ -54,19 +54,17 @@ fn get_max(bank: &[u32], count: usize) -> usize {
     let mut index = 0;
 
     for size in (1..=count).rev() {
-        let mut found_digit = 0;
-
-        for i in index..=(bank.len() - size) {
-            let digit = bank[i];
-            if digit > found_digit {
-                found_digit = digit;
-                index = i + 1;
-            }
-        }
-
+        let (found_idx, &found_digit) = bank[index..=bank.len() - size]
+            .iter()
+            .enumerate()
+            // max_by_key returns the last occurrence of the max value
+            // we want the first one. So we reverse the slice.
+            .rev()
+            .max_by_key(|(_, digit)| *digit)
+            .unwrap();
+        index += found_idx + 1;
         result = result * 10 + found_digit as usize;
     }
-
     result
 }
 
