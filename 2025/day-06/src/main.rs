@@ -4,6 +4,8 @@ fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("day-06.txt")?;
     let result = part1(&input)?;
     println!("{result}");
+    let result = part2(&input)?;
+    println!("{result}");
     Ok(())
 }
 
@@ -49,6 +51,59 @@ fn part1(input: &str) -> anyhow::Result<u64> {
     Ok(result)
 }
 
+fn part2(input: &str) -> anyhow::Result<u64> {
+    let mut lines = input.lines().collect::<Vec<_>>();
+    let ops = lines.pop().ok_or_else(|| anyhow!("empty input"))?;
+    let ops = ops
+        .chars()
+        .enumerate()
+        .filter(|(_, c)| *c == '+' || *c == '*')
+        .map(|(i, c)| {
+            (
+                i,
+                match c {
+                    '+' => Operation::Add,
+                    '*' => Operation::Multiply,
+                    _ => unreachable!(),
+                },
+            )
+        })
+        .collect::<Vec<_>>();
+    let width = lines.iter().map(|l| l.len()).max().unwrap_or(0);
+    let lines = lines
+        .iter()
+        .map(|l| l.chars().collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    let mut result = 0;
+    for (i, (start, op)) in ops.iter().copied().enumerate().rev() {
+        let end = if i + 1 == ops.len() {
+            width
+        } else {
+            ops[i + 1].0 - 1
+        };
+
+        let mut res: u64 = match op {
+            Operation::Add => 0,
+            Operation::Multiply => 1,
+        };
+        for col in (start..end).rev() {
+            let mut value: u64 = 0;
+            for line in lines.iter() {
+                let c = if col < line.len() { line[col] } else { ' ' };
+                if c.is_ascii_digit() {
+                    value = value * 10 + c.to_digit(10).unwrap() as u64;
+                }
+            }
+            match op {
+                Operation::Add => res += value,
+                Operation::Multiply => res *= value,
+            };
+        }
+        result += res;
+    }
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -62,5 +117,11 @@ mod tests {
     fn test_part1() {
         let result = part1(INPUT).unwrap();
         assert_eq!(result, 4277556);
+    }
+
+    #[test]
+    fn test_part2() {
+        let result = part2(INPUT).unwrap();
+        assert_eq!(result, 3263827);
     }
 }
