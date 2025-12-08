@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use winnow::ascii::{digit1, line_ending, multispace0};
 use winnow::combinator::{eof, separated, terminated};
 use winnow::{ModalResult, Parser};
@@ -45,6 +45,7 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     let points = terminated(parse_points, (multispace0, eof))
         .parse_next(&mut inp)
         .map_err(|e| anyhow!("{e}"))?;
+
     let mut connections: Vec<(usize, usize)> =
         Vec::with_capacity(points.len() * (points.len() + 1) / 2);
     for i in 0..points.len() {
@@ -53,6 +54,7 @@ fn part2(input: &str) -> anyhow::Result<usize> {
         }
     }
     connections.sort_unstable_by_key(|&(i, j)| distance(&points[i], &points[j]));
+
     let mut uf = UnionFind::new(points.len());
     let mut result: (usize, usize) = (0, 0);
     for (i, j) in connections.iter().copied() {
