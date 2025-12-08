@@ -27,13 +27,11 @@ fn part1(input: &str) -> anyhow::Result<usize> {
     current_beams[grid.start.1] = true;
     for row in 1..grid.height {
         for col in 0..grid.width {
-            if grid.values[row][col] == '^' {
-                if current_beams[col] {
-                    result += 1;
-                    current_beams[col] = false;
-                    current_beams[col - 1] = true;
-                    current_beams[col + 1] = true;
-                }
+            if grid.values[row][col] == '^' && current_beams[col] {
+                result += 1;
+                current_beams[col] = false;
+                current_beams[col - 1] = true;
+                current_beams[col + 1] = true;
             }
         }
     }
@@ -47,13 +45,11 @@ fn part2(input: &str) -> anyhow::Result<usize> {
 
     for row in 1..grid.height {
         for col in 0..grid.width {
-            if grid.values[row][col] == '^' {
-                if current_beams[col] != 0 {
-                    let current = current_beams[col];
-                    current_beams[col] = 0;
-                    current_beams[col - 1] += current;
-                    current_beams[col + 1] += current;
-                }
+            if grid.values[row][col] == '^' && current_beams[col] != 0 {
+                let current = current_beams[col];
+                current_beams[col] = 0;
+                current_beams[col - 1] += current;
+                current_beams[col + 1] += current;
             }
         }
     }

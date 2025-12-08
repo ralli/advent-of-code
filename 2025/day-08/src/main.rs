@@ -109,7 +109,7 @@ impl UnionFind {
         if a == b {
             return;
         }
-        if (self.sizes[a] > self.sizes[b]) {
+        if self.sizes[a] > self.sizes[b] {
             std::mem::swap(&mut a, &mut b);
         }
         self.parents[a] = b;

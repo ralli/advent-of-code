@@ -56,7 +56,7 @@ fn is_invalid2(n: u64) -> bool {
     let bs = s.as_bytes();
     let size = bs.len();
     for i in 1..size {
-        if size % i == 0 {
+        if size.is_multiple_of(i) {
             let chunks = bs.chunks_exact(i).collect::<Vec<&[u8]>>();
             if chunks.windows(2).all(|w| w[0] == w[1]) {
                 return true;
@@ -73,7 +73,7 @@ fn is_invalid(n: u64) -> bool {
 
 fn divisor(n: u64) -> u64 {
     let num_digits = n.ilog10() as u64 + 1;
-    if num_digits % 2 != 0 {
+    if !num_digits.is_multiple_of(2) {
         return 0;
     }
     let mut start: u64 = 1;
