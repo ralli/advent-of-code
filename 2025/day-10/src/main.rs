@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use good_lp::*;
 use rayon::prelude::*;
 use std::collections::{HashSet, VecDeque};
 use winnow::ascii::{digit1, line_ending, multispace0, space1};
@@ -72,64 +73,65 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     let machines = terminated(parse_machines, (multispace0, eof))
         .parse_next(&mut inp)
         .map_err(|e| anyhow!("{e}"))?;
-    let result = machines.par_iter().map(find_joltage_steps).sum();
+    let result = machines
+        .par_iter()
+        .map(|m| find_joltage_steps(m).unwrap())
+        .sum();
     Ok(result)
 }
 
-#[derive(Debug, Clone)]
-struct JoltageState<'a> {
-    joltage: Vec<usize>,
-    schematic: &'a [usize],
-    steps: usize,
-}
+// a bfs as in part1 was slow. This approach uses linear programming to solve the problem.
+//
+// (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
+//
+// x0, ..., x4 are integers and >= 0
+// x4 + x5 = 3
+// x1 + x5 = 5
+// x2 + x3 + x4 = 4
+// x0 + x1 + x3 = 7
+//
 
-fn find_joltage_steps(machine: &Machine) -> usize {
-    let initial_state = vec![0usize; machine.indicators.len()];
-    let mut q = VecDeque::from_iter(machine.schematics.iter().map(|s| JoltageState {
-        joltage: initial_state.clone(),
-        schematic: s,
-        steps: 0,
-    }));
-    let mut visited = HashSet::from([initial_state.clone()]);
-    while let Some(current) = q.pop_front() {
-        if current.joltage == machine.requirements {
-            return current.steps;
-        }
-        let next_state = apply_joltage(current.joltage.as_slice(), current.schematic);
-        if next_state
-            .iter()
-            .zip(machine.requirements.iter())
-            .any(|(a, b)| a > b)
-        {
-            continue;
-        }
-        if !visited.insert(next_state.clone()) {
-            continue;
-        }
-        for schematic in &machine.schematics {
-            q.push_back(JoltageState {
-                joltage: next_state.clone(),
-                schematic,
-                steps: current.steps + 1,
-            });
+fn find_joltage_steps(machine: &Machine) -> anyhow::Result<usize> {
+    // define the variables x0, ..., xn
+    let mut vars = variables!();
+    let press_vars = machine
+        .schematics
+        .iter()
+        .map(|_| vars.add(variable().min(0).integer()))
+        .collect::<Vec<_>>();
+
+    let mut expressions: Vec<Expression> = machine
+        .joltages
+        .iter()
+        .map(|_| 0.into_expression())
+        .collect();
+
+    for (i, schematic) in machine.schematics.iter().enumerate() {
+        for &j in schematic.iter() {
+            // add "+ xi" to the expression for the joltage
+            expressions[j] += press_vars[i];
         }
     }
-    0
-}
 
-fn apply_joltage(state: &[usize], schematic: &[usize]) -> Vec<usize> {
-    let mut result = state.to_vec();
-    for &i in schematic {
-        result[i] += 1;
+    let mut problem = vars
+        .minimise(press_vars.iter().sum::<Expression>())
+        .using(default_solver);
+
+    for (expression, &joltage) in expressions.into_iter().zip(machine.joltages.iter()) {
+        problem.add_constraint(expression.eq(joltage as f64));
     }
-    result
+
+    let solution = problem.solve()?;
+    let result = press_vars.iter().map(|&v| solution.value(v)).sum::<f64>();
+
+    Ok(result as usize)
 }
 
 #[derive(Debug, Clone)]
 struct Machine {
     indicators: Vec<bool>,
     schematics: Vec<Vec<usize>>,
-    requirements: Vec<usize>,
+    joltages: Vec<usize>,
 }
 
 fn parse_machines(input: &mut &str) -> ModalResult<Vec<Machine>> {
@@ -147,7 +149,7 @@ fn parse_machine(input: &mut &str) -> ModalResult<Machine> {
         .map(|(indicators, _, schematics, _, requirements)| Machine {
             indicators,
             schematics,
-            requirements,
+            joltages: requirements,
         })
         .parse_next(input)
 }
