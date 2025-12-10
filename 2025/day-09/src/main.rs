@@ -9,11 +9,22 @@ fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("day-09.txt")?;
     let result = part1(&input)?;
     println!("{result}");
+    let result = part2(&input)?;
+    println!("{result}");
     Ok(())
 }
 
-type Point = (u64, u64);
-type Edge = (Point, Point);
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+struct Point {
+    x: u64,
+    y: u64,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+struct Edge {
+    min: Point,
+    max: Point,
+}
 
 fn part1(input: &str) -> anyhow::Result<u64> {
     let mut inp = input;
@@ -34,49 +45,17 @@ fn part2(input: &str) -> anyhow::Result<u64> {
     let points = terminated(parse_points, (multispace0, eof))
         .parse_next(&mut inp)
         .map_err(|e| anyhow!("{e}"))?;
-    let mut horiz: Vec<Edge> = create_horiz_edges(&points);
-
-    let mut vert: Vec<Edge> = create_vert_edges(&points);
-
-    horiz.sort_unstable_by_key(|&((xmin, _ymin), (_xmax, _ymax))| xmin);
-    vert.sort_unstable_by_key(|&((_xmin, ymin), (_xmax, _ymax))| ymin);
-
+    let horiz: Vec<Edge> = create_horiz_edges(&points);
+    let vert: Vec<Edge> = create_vert_edges(&points);
     let mut max_area = 0;
-    for (i, &(x1, y1)) in points.iter().enumerate() {
-        for (j, &(x2, y2)) in points.iter().enumerate().skip(i + 1) {
-            if x1 == x2 && y1 == y2 {
+
+    for (i, p1) in points.iter().enumerate() {
+        for p2 in points.iter().skip(i + 1) {
+            if !check_valid(*p1, *p2, &points, &horiz, &vert) {
                 continue;
             }
-            let left = x1.min(x2);
-            let top = y1.min(y2);
-            let right = x1.max(x2);
-            let bottom = y1.max(y2);
-            let top_left = (left, top);
-            let top_right = (right, top);
-            let bottom_left = (left, bottom);
-            let bottom_right = (right, bottom);
-
-            println!("{top_left:?} - {bottom_right:?}");
-            // one point lies within the rectangle => false
-            if points
-                .iter()
-                .any(|&(x, y)| left < x && x < right && top < y && y < bottom)
-            {
-                continue;
-            }
-
-            // one of the points of the rectangle is not inside the polygon => false
-            if !is_inside(&top_left, &vert)
-                || !is_inside(&top_right, &vert)
-                || !is_inside(&bottom_left, &vert)
-                || !is_inside(&bottom_right, &vert)
-            {
-                continue;
-            }
-
-            let a = area(&top_left, &bottom_right);
+            let a = area(p1, p2);
             if a > max_area {
-                println!("({x1},{y1}), ({x2},{y2}) -> {a}");
                 max_area = a;
             }
         }
@@ -85,27 +64,52 @@ fn part2(input: &str) -> anyhow::Result<u64> {
     Ok(max_area)
 }
 
-fn check_valid((x1, y1): Point, (x2, y2): Point, points: &[Point], vert: &[Edge]) -> bool {
-    let left = x1.min(x2);
-    let top = y1.min(y2);
-    let right = x1.max(x2);
-    let bottom = y1.max(y2);
-    let top_left = (left, top);
-    let top_right = (right, top);
-    let bottom_left = (left, bottom);
-    let bottom_right = (right, bottom);
+fn check_valid(p1: Point, p2: Point, points: &[Point], horiz: &[Edge], vert: &[Edge]) -> bool {
+    let left = p1.x.min(p2.x);
+    let top = p1.y.min(p2.y);
+    let right = p1.x.max(p2.x);
+    let bottom = p1.y.max(p2.y);
+    let top_left = Point { x: left, y: top };
+    let top_right = Point { x: right, y: top };
+    let bottom_left = Point { x: left, y: bottom };
+    let bottom_right = Point {
+        x: right,
+        y: bottom,
+    };
 
+    // one of the polygons points is inside the rectangle
     if points
         .iter()
-        .any(|&(x, y)| left < x && x < right && top < y && y < bottom)
+        .any(|p| left < p.x && p.x < right && top < p.y && p.y < bottom)
     {
         return false;
     }
-    if !is_inside(&top_left, &vert)
-        || !is_inside(&top_right, &vert)
-        || !is_inside(&bottom_left, &vert)
-        || !is_inside(&bottom_right, &vert)
+
+    // one of the rectangles corners is outside the polygon
+    if !is_inside(top_left, horiz, vert)
+        || !is_inside(top_right, horiz, vert)
+        || !is_inside(bottom_left, horiz, vert)
+        || !is_inside(bottom_right, horiz, vert)
     {
+        return false;
+    }
+
+    // one of the polygons edges crosses the rectangle
+    if horiz.iter().any(|e| {
+        top < e.min.y
+            && bottom > e.min.y
+            && e.min.x.min(e.max.x) < right
+            && e.min.x.max(e.max.x) > left
+    }) {
+        return false;
+    }
+
+    if vert.iter().any(|e| {
+        left < e.min.x
+            && right > e.min.x
+            && e.min.y.min(e.max.y) < bottom
+            && e.min.y.max(e.max.y) > top
+    }) {
         return false;
     }
 
@@ -119,10 +123,13 @@ fn create_horiz_edges(points: &[Point]) -> Vec<Edge> {
         .windows(2)
         .map(|w| (w[0], w[1]))
         .chain(std::iter::once((last_point, first_point)))
-        .filter(|&((x1, y1), (x2, y2))| y1 == y2)
-        .map(|((x1, y1), (x2, y2))| ((x1.min(x2), y1.min(y2)), (x1.max(x2), y1.max(y2))))
+        .filter(|(p1, p2)| p1.y == p2.y)
+        .map(|(p1, p2)| Edge {
+            min: p1.min(p2),
+            max: p1.max(p2),
+        })
         .collect_vec();
-    result.sort_unstable_by_key(|&((xmin, _ymin), (_xmax, _ymax))| xmin);
+    result.sort_unstable_by_key(|e| e.min.y);
     result
 }
 
@@ -133,30 +140,85 @@ fn create_vert_edges(points: &[Point]) -> Vec<Edge> {
         .windows(2)
         .map(|w| (w[0], w[1]))
         .chain(std::iter::once((last_point, first_point)))
-        .filter(|&((x1, y1), (x2, y2))| x1 == x2)
-        .map(|((x1, y1), (x2, y2))| ((x1.min(x2), y1.min(y2)), (x1.max(x2), y1.max(y2))))
+        .filter(|(p1, p2)| p1.x == p2.x)
+        .map(|(p1, p2)| Edge {
+            min: p1.min(p2),
+            max: p1.max(p2),
+        })
         .collect_vec();
-    result.sort_unstable_by_key(|&((xmin, ymin), (_xmax, _ymax))| xmin);
+    result.sort_unstable_by_key(|e| e.min.x);
     result
 }
 
-fn is_inside((x, y): &Point, vert: &[Edge]) -> bool {
-    let xcoords = vert
-        .iter()
-        .filter(|&((_, ymin), (_, ymax))| y >= ymin && y <= ymax)
-        .map(|&((x, _), (_, _))| x)
-        .collect_vec();
+fn is_inside(p: Point, hedges: &[Edge], vedges: &[Edge]) -> bool {
+    let mut left_edges = 0;
+    let mut right_edges = 0;
+    let mut crossed_edges = 0;
 
-    for (i, (x1, x2)) in xcoords.iter().tuple_windows::<(_, _)>().enumerate() {
-        if x >= x1 && x <= x2 {
-            return i % 2 == 0;
+    let mut i = hedges.partition_point(|e| e.min.y < p.y);
+    while i < hedges.len() && hedges[i].min.y == p.y {
+        if (hedges[i].min.x..=hedges[i].max.x).contains(&p.x) {
+            // we've hit a horizontal edge, so we're inside the polygon
+            return true;
         }
+        i += 1;
     }
-    false
+    if i == hedges.len() {
+        return false;
+    }
+
+    let mut j = vedges.partition_point(|e| e.min.x < p.x);
+    while j < vedges.len() && vedges[j].min.x == p.x {
+        if (vedges[j].min.y..=vedges[j].max.y).contains(&p.y) {
+            // we've hit a horizontal edge, so we're inside the polygon
+            return true;
+        }
+        j += 1;
+    }
+    if j == vedges.len() {
+        return false;
+    }
+
+    for e in hedges.iter().skip(i) {
+        if (e.min.x..=e.max.x).contains(&p.x) {
+            if p.x == e.min.x {
+                // hit a corner
+                if e.max.x > p.x {
+                    right_edges += 1;
+                } else {
+                    left_edges += 1;
+                }
+                if right_edges == left_edges {
+                    // We've crossed as many right-pointing as left-pointing
+                    // edges. Increase the total number of edges crossed.
+                    crossed_edges += 1;
+                }
+            } else if p.x == e.max.x {
+                // hit a corner
+                if e.min.x > p.x {
+                    right_edges += 1;
+                } else {
+                    left_edges += 1;
+                }
+                if right_edges == left_edges {
+                    // We've crossed as many right-pointing as left-pointing
+                    // edges. Increase the total number of edges crossed.
+                    crossed_edges += 1;
+                }
+            } else {
+                // hit the inside of the edge
+                crossed_edges += 1;
+            }
+        }
+        i += 1;
+    }
+
+    // we're inside the polygon if we've crossed an odd number of edges
+    crossed_edges % 2 != 0
 }
 
-fn area((x1, y1): &Point, (x2, y2): &Point) -> u64 {
-    (x1.abs_diff(*x2) + 1) * (y2.abs_diff(*y1) + 1)
+fn area(p1: &Point, p2: &Point) -> u64 {
+    (p1.x.abs_diff(p2.x) + 1) * (p1.y.abs_diff(p2.y) + 1)
 }
 
 fn parse_points(input: &mut &str) -> ModalResult<Vec<Point>> {
@@ -164,7 +226,9 @@ fn parse_points(input: &mut &str) -> ModalResult<Vec<Point>> {
 }
 
 fn parse_point(input: &mut &str) -> ModalResult<Point> {
-    separated_pair(parse_number, ',', parse_number).parse_next(input)
+    separated_pair(parse_number, ',', parse_number)
+        .map(|(x, y)| Point { x, y })
+        .parse_next(input)
 }
 
 fn parse_number(input: &mut &str) -> ModalResult<u64> {
@@ -194,11 +258,12 @@ mod tests {
         let mut inp = INPUT;
         let points = parse_points(&mut inp).unwrap();
         let vert = create_vert_edges(&points);
+        let horiz = create_horiz_edges(&points);
         println!("{vert:?}");
-        let (x1, y1) = (2, 3);
-        let (x2, y2) = (9, 5);
+        let p1 = Point { x: 2, y: 3 };
+        let p2 = Point { x: 9, y: 5 };
 
-        assert!(check_valid((x1, y1), (x2, y2), &points, &vert))
+        assert!(check_valid(p1, p2, &points, &horiz, &vert))
     }
 
     #[test]
