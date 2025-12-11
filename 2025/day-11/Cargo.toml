@@ -1,0 +1,9 @@
+[package]
+name = "day-11"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+pathfinding = "4.14.0"
+winnow = "0.7.14"
