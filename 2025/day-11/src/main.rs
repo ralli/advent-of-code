@@ -7,7 +7,7 @@ use winnow::ascii::{alpha1, line_ending, multispace0, space1};
 use winnow::combinator::{eof, separated, separated_pair, terminated};
 
 fn main() -> anyhow::Result<()> {
-    let input = std::fs::read_to_string("day-11.txt").unwrap();
+    let input = std::fs::read_to_string("day-11.txt")?;
 
     let result = part1(&input)?;
     println!("{result}");
@@ -24,9 +24,9 @@ fn part1(input: &str) -> anyhow::Result<usize> {
         .parse_next(&mut inp)
         .map_err(|e| anyhow!("{e}"))?;
     let result = count_paths(
-        "you".to_string(),
+        "you",
         |from| adj.get(from).cloned().unwrap_or_default(),
-        |s| s == "out",
+        |s| *s == "out",
     );
     Ok(result)
 }
@@ -41,25 +41,24 @@ fn part2(input: &str) -> anyhow::Result<usize> {
     Ok(result)
 }
 
-struct Part2 {
-    cache: BTreeMap<(String, bool, bool), usize>,
-    adj: Adj,
+struct Part2<'a> {
+    cache: BTreeMap<(&'a str, bool, bool), usize>,
+    adj: Adj<'a>,
 }
 
-impl Part2 {
-    fn new(adj: Adj) -> Self {
+impl<'a> Part2<'a> {
+    fn new(adj: Adj<'a>) -> Self {
         Self {
             cache: BTreeMap::new(),
             adj,
         }
     }
 
-    fn count_paths(&mut self, from: &str, dac_seen: bool, fft_seen: bool) -> usize {
-        if let Some(&count) = self.cache.get(&(from.to_string(), dac_seen, fft_seen)) {
+    fn count_paths(&mut self, from: &'a str, dac_seen: bool, fft_seen: bool) -> usize {
+        if let Some(&count) = self.cache.get(&(from, dac_seen, fft_seen)) {
             return count;
         }
 
-        let from = from.to_string();
         if from == "out" {
             let count = if dac_seen && fft_seen { 1 } else { 0 };
             self.cache.insert((from, dac_seen, fft_seen), count);
@@ -72,7 +71,7 @@ impl Part2 {
         let count = if let Some(nodes) = self.adj.get(&from).cloned() {
             nodes
                 .iter()
-                .map(|n| self.count_paths(n.as_str(), next_dac_seen, next_fft_seen))
+                .map(|n| self.count_paths(n, next_dac_seen, next_fft_seen))
                 .sum()
         } else {
             0
@@ -84,22 +83,22 @@ impl Part2 {
     }
 }
 
-type Adj = BTreeMap<String, Vec<String>>;
+type Adj<'a> = BTreeMap<&'a str, Vec<&'a str>>;
 
-fn parse_adj(input: &mut &str) -> ModalResult<Adj> {
+fn parse_adj<'a>(input: &mut &'a str) -> ModalResult<Adj<'a>> {
     separated(1.., parse_row, line_ending).parse_next(input)
 }
 
-fn parse_row(input: &mut &str) -> ModalResult<(String, Vec<String>)> {
+fn parse_row<'a>(input: &mut &'a str) -> ModalResult<(&'a str, Vec<&'a str>)> {
     separated_pair(parse_str, ": ", parse_string_list).parse_next(input)
 }
 
-fn parse_string_list(input: &mut &str) -> ModalResult<Vec<String>> {
+fn parse_string_list<'a>(input: &mut &'a str) -> ModalResult<Vec<&'a str>> {
     separated(1.., parse_str, space1).parse_next(input)
 }
 
-fn parse_str(input: &mut &str) -> ModalResult<String> {
-    alpha1.map(|s: &str| s.to_string()).parse_next(input)
+fn parse_str<'a>(input: &mut &'a str) -> ModalResult<&'a str> {
+    alpha1.parse_next(input)
 }
 
 #[cfg(test)]
